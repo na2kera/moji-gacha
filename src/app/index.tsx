@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,11 +24,17 @@ type DrawResult = {
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const backgroundImages = {
+  light: require('@/assets/images/gacha/gacha-bg-light.png'),
+  dark: require('@/assets/images/gacha/gacha-bg-dark.png'),
+};
 
 export default function GachaScreen() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<DrawResult | null>(null);
   const busyRef = useRef(false);
+  const colorScheme = useColorScheme();
+  const backgroundImage = backgroundImages[colorScheme === 'dark' ? 'dark' : 'light'];
 
   const recordDraw = useCollectionStore((state) => state.recordDraw);
   const totalDraws = useCollectionStore((state) => state.totalDraws);
@@ -80,6 +87,11 @@ export default function GachaScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Image
+        source={backgroundImage}
+        style={styles.backgroundImage}
+        contentFit="cover"
+      />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <ThemedText type="subtitle">もじガチャ</ThemedText>
@@ -162,6 +174,11 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFill,
+    opacity: 0.56,
+    pointerEvents: 'none',
   },
   safeArea: {
     flex: 1,
