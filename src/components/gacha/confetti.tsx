@@ -76,7 +76,7 @@ function Particle({ spec }: { spec: ParticleSpec }) {
 
 /** カプセル開封時に中心から弾ける紙吹雪 */
 export function Confetti() {
-  const particles = useMemo(createParticles, []);
+  const particles = useMemo(() => createParticles(), []);
   return (
     <Animated.View pointerEvents="none" style={styles.container}>
       {particles.map((spec, index) => (

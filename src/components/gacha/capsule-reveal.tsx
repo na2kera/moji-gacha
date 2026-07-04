@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -24,6 +25,13 @@ export const WOBBLE_DURATION = 640;
 export const OPEN_DURATION = 700;
 
 const CAPSULE_SIZE = 150;
+const CAPSULE_HALF_HEIGHT = CAPSULE_SIZE / 2;
+
+const capsuleTopImages = {
+  common: require('@/assets/images/gacha/capsule-top-common.png'),
+  rare: require('@/assets/images/gacha/capsule-top-rare.png'),
+  superRare: require('@/assets/images/gacha/capsule-top-super-rare.png'),
+};
 
 type Props = {
   character: GachaCharacter;
@@ -105,6 +113,12 @@ export function CapsuleReveal({ character, stage }: Props) {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.flash, flashStyle]} />
+      {character.rarity === 'superRare' && stage === 'open' && (
+        <Image
+          source={require('@/assets/images/gacha/super-rare-aura.png')}
+          style={styles.superRareAura}
+        />
+      )}
       {stage === 'open' && <Confetti />}
 
       <Animated.View style={[styles.glyphWrapper, glyphStyle]}>
@@ -113,11 +127,15 @@ export function CapsuleReveal({ character, stage }: Props) {
       </Animated.View>
 
       <Animated.View style={[styles.capsule, capsuleStyle]} pointerEvents="none">
-        <Animated.View
-          style={[styles.capsuleHalf, styles.capsuleTop, { backgroundColor: rarityColor }, topHalfStyle]}
-        />
-        <Animated.View style={[styles.capsuleHalf, styles.capsuleBottom, bottomHalfStyle]} />
-        <View style={styles.capsuleSeam} />
+        <Animated.View style={[styles.capsuleHalf, styles.capsuleTop, topHalfStyle]}>
+          <Image source={capsuleTopImages[character.rarity]} style={styles.capsuleImage} />
+        </Animated.View>
+        <Animated.View style={[styles.capsuleHalf, styles.capsuleBottom, bottomHalfStyle]}>
+          <Image
+            source={require('@/assets/images/gacha/capsule-bottom.png')}
+            style={styles.capsuleImage}
+          />
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -146,28 +164,23 @@ const styles = StyleSheet.create({
   capsuleHalf: {
     position: 'absolute',
     width: CAPSULE_SIZE,
-    height: CAPSULE_SIZE / 2,
-    borderWidth: 3,
-    borderColor: 'rgba(0, 0, 0, 0.12)',
+    height: CAPSULE_HALF_HEIGHT,
   },
   capsuleTop: {
     top: 0,
-    borderTopLeftRadius: CAPSULE_SIZE / 2,
-    borderTopRightRadius: CAPSULE_SIZE / 2,
-    borderBottomWidth: 0,
   },
   capsuleBottom: {
     bottom: 0,
-    backgroundColor: '#FFF8F0',
-    borderBottomLeftRadius: CAPSULE_SIZE / 2,
-    borderBottomRightRadius: CAPSULE_SIZE / 2,
-    borderTopWidth: 0,
   },
-  capsuleSeam: {
-    position: 'absolute',
+  capsuleImage: {
     width: CAPSULE_SIZE,
-    height: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    height: CAPSULE_HALF_HEIGHT,
+  },
+  superRareAura: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    opacity: 0.9,
   },
   glyphWrapper: {
     position: 'absolute',
