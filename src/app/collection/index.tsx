@@ -1,22 +1,14 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { japanese } from '@/data/japanese';
+import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { useCollectionStore } from '@/store/collection';
-
-const characterById = new Map(japanese.characters.map((c) => [c.id, c]));
-const variantsByBaseId = japanese.characters.reduce((map, character) => {
-  if (character.id === character.baseId) return map;
-  const variants = map.get(character.baseId) ?? [];
-  variants.push(character);
-  map.set(character.baseId, variants);
-  return map;
-}, new Map<string, GachaCharacter[]>());
 
 function SheetCell({ character }: { character: GachaCharacter | null }) {
   const entries = useCollectionStore((state) => state.entries);
@@ -60,33 +52,43 @@ function SheetCell({ character }: { character: GachaCharacter | null }) {
   }
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.cell, styles.cellObtained, { borderColor: RarityColors[character.rarity] }]}>
-      <ThemedText
-        type="subtitle"
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: '/collection/[id]', params: { id: character.id } })
+      }
+      style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}>
+      <ThemedView
+        type="backgroundElement"
         style={[
-          styles.cellGlyph,
-          collection.colorVariant && { color: collection.colorVariant.glyphColor },
+          styles.cellInner,
+          styles.cellObtained,
+          { borderColor: RarityColors[character.rarity] },
         ]}>
-        {character.glyph}
-      </ThemedText>
-      {collection.colorVariant && (
-        <View
+        <ThemedText
+          type="subtitle"
           style={[
-            styles.variantMarker,
-            { backgroundColor: collection.colorVariant.glyphColor },
-          ]}
-        />
-      )}
-      {collection.totalCopies > 1 && (
-        <View style={[styles.countBadge, { backgroundColor: RarityColors[character.rarity] }]}>
-          <ThemedText type="smallBold" style={styles.countBadgeText}>
-            ×{collection.totalCopies}
-          </ThemedText>
-        </View>
-      )}
-    </ThemedView>
+            styles.cellGlyph,
+            collection.colorVariant && { color: collection.colorVariant.glyphColor },
+          ]}>
+          {character.glyph}
+        </ThemedText>
+        {collection.colorVariant && (
+          <View
+            style={[
+              styles.variantMarker,
+              { backgroundColor: collection.colorVariant.glyphColor },
+            ]}
+          />
+        )}
+        {collection.totalCopies > 1 && (
+          <View style={[styles.countBadge, { backgroundColor: RarityColors[character.rarity] }]}>
+            <ThemedText type="smallBold" style={styles.countBadgeText}>
+              ×{collection.totalCopies}
+            </ThemedText>
+          </View>
+        )}
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -205,6 +207,16 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  cellInner: {
+    flex: 1,
+    alignSelf: 'stretch',
+    borderRadius: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellPressed: {
+    opacity: 0.7,
   },
   cellLocked: {
     opacity: 0.6,
