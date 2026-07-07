@@ -261,19 +261,24 @@ const styles = StyleSheet.create({
   },
   resultButtons: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: Spacing.two,
     marginTop: Spacing.two,
   },
   secondaryButton: {
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    minHeight: 44,
     backgroundColor: '#F0F0F3',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButton: {
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    minHeight: 44,
     backgroundColor: '#E5484D',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
