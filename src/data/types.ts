@@ -1,11 +1,20 @@
 export type Rarity = 'common' | 'rare' | 'superRare';
 
+export type ColorVariant = {
+  label: string;
+  glyphColor: string;
+  glowColor: string;
+};
+
 export type GachaCharacter = {
   /** 一意なID (例: 'ja-a') */
   id: string;
+  /** 色違いも含めた同一文字グループのID */
+  baseId: string;
   /** 表示する文字 (例: 'あ') */
   glyph: string;
   rarity: Rarity;
+  colorVariant?: ColorVariant;
   /** 抽選の重み。大きいほど出やすい */
   weight: number;
 };

@@ -108,7 +108,8 @@ export function CapsuleReveal({ character, stage }: Props) {
     transform: [{ scale: glyphScale.value }],
   }));
 
-  const rarityColor = RarityColors[character.rarity];
+  const glowColor = character.colorVariant?.glowColor ?? RarityColors[character.rarity];
+  const glyphColor = character.colorVariant?.glyphColor ?? '#FFFFFF';
 
   return (
     <View style={styles.container}>
@@ -122,8 +123,10 @@ export function CapsuleReveal({ character, stage }: Props) {
       {stage === 'open' && <Confetti />}
 
       <Animated.View style={[styles.glyphWrapper, glyphStyle]}>
-        <View style={[styles.glyphGlow, { backgroundColor: rarityColor }]} />
-        <Animated.Text style={styles.glyph}>{character.glyph}</Animated.Text>
+        <View style={[styles.glyphGlow, { backgroundColor: glowColor }]} />
+        <Animated.Text style={[styles.glyph, { color: glyphColor }]}>
+          {character.glyph}
+        </Animated.Text>
       </Animated.View>
 
       <Animated.View style={[styles.capsule, capsuleStyle]} pointerEvents="none">

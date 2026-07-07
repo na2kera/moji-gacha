@@ -146,7 +146,26 @@ export default function GachaScreen() {
                 {'★'.repeat(RarityStars[result.character.rarity])}{' '}
                 {RarityLabels[result.character.rarity]}
               </ThemedText>
-              <ThemedText style={styles.resultGlyph}>{result.character.glyph}</ThemedText>
+              {result.character.colorVariant && (
+                <View
+                  style={[
+                    styles.variantBadge,
+                    { backgroundColor: result.character.colorVariant.glyphColor },
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.variantBadgeText}>
+                    {result.character.colorVariant.label}
+                  </ThemedText>
+                </View>
+              )}
+              <ThemedText
+                style={[
+                  styles.resultGlyph,
+                  result.character.colorVariant && {
+                    color: result.character.colorVariant.glyphColor,
+                  },
+                ]}>
+                {result.character.glyph}
+              </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {result.isNew ? 'はじめてゲット!' : `${resultCount} 個目`}
               </ThemedText>
@@ -251,6 +270,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.half,
   },
   newBadgeText: {
+    color: '#FFFFFF',
+  },
+  variantBadge: {
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  variantBadgeText: {
     color: '#FFFFFF',
   },
   resultGlyph: {
