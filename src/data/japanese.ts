@@ -71,3 +71,14 @@ export const japanese: LanguageSet = {
   characters,
   sheetRows: SHEET.map((row) => [...row].map((glyph) => (glyph === '　' ? null : `ja-${glyph}`))),
 };
+
+export const characterById = new Map(characters.map((c) => [c.id, c]));
+
+/** baseId → 色違いバリエーションの一覧 (基本文字自身は含まない) */
+export const variantsByBaseId = characters.reduce((map, character) => {
+  if (character.id === character.baseId) return map;
+  const variants = map.get(character.baseId) ?? [];
+  variants.push(character);
+  map.set(character.baseId, variants);
+  return map;
+}, new Map<string, GachaCharacter[]>());
