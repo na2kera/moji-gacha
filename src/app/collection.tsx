@@ -10,17 +10,46 @@ import type { GachaCharacter } from '@/data/types';
 import { useCollectionStore } from '@/store/collection';
 
 const characterById = new Map(japanese.characters.map((c) => [c.id, c]));
+const variantsByBaseId = japanese.characters.reduce((map, character) => {
+  if (character.id === character.baseId) return map;
+  const variants = map.get(character.baseId) ?? [];
+  variants.push(character);
+  map.set(character.baseId, variants);
+  return map;
+}, new Map<string, GachaCharacter[]>());
 
 function SheetCell({ character }: { character: GachaCharacter | null }) {
-  const entry = useCollectionStore((state) =>
-    character ? state.entries[character.id] : undefined,
-  );
+  const entries = useCollectionStore((state) => state.entries);
+  const collection = (() => {
+    if (!character) {
+      return { ownedCount: 0, totalCopies: 0, colorVariant: undefined };
+    }
+
+    const characters = [character, ...(variantsByBaseId.get(character.id) ?? [])];
+    return characters.reduce<{
+      ownedCount: number;
+      totalCopies: number;
+      colorVariant: GachaCharacter['colorVariant'];
+    }>(
+      (summary, current) => {
+        const entry = entries[current.id];
+        if (!entry) return summary;
+
+        return {
+          ownedCount: summary.ownedCount + 1,
+          totalCopies: summary.totalCopies + entry.count,
+          colorVariant: summary.colorVariant ?? current.colorVariant,
+        };
+      },
+      { ownedCount: 0, totalCopies: 0, colorVariant: undefined },
+    );
+  })();
 
   if (!character) {
     return <View style={styles.cell} />;
   }
 
-  if (!entry) {
+  if (collection.ownedCount === 0) {
     return (
       <ThemedView type="backgroundElement" style={[styles.cell, styles.cellLocked]}>
         <ThemedText type="subtitle" themeColor="textSecondary" style={styles.lockedGlyph}>
@@ -34,13 +63,26 @@ function SheetCell({ character }: { character: GachaCharacter | null }) {
     <ThemedView
       type="backgroundElement"
       style={[styles.cell, styles.cellObtained, { borderColor: RarityColors[character.rarity] }]}>
-      <ThemedText type="subtitle" style={styles.cellGlyph}>
+      <ThemedText
+        type="subtitle"
+        style={[
+          styles.cellGlyph,
+          collection.colorVariant && { color: collection.colorVariant.glyphColor },
+        ]}>
         {character.glyph}
       </ThemedText>
-      {entry.count > 1 && (
+      {collection.colorVariant && (
+        <View
+          style={[
+            styles.variantMarker,
+            { backgroundColor: collection.colorVariant.glyphColor },
+          ]}
+        />
+      )}
+      {collection.totalCopies > 1 && (
         <View style={[styles.countBadge, { backgroundColor: RarityColors[character.rarity] }]}>
           <ThemedText type="smallBold" style={styles.countBadgeText}>
-            ×{entry.count}
+            ×{collection.totalCopies}
           </ThemedText>
         </View>
       )}
@@ -189,5 +231,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     lineHeight: 16,
+  },
+  variantMarker: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });

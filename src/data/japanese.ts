@@ -21,6 +21,15 @@ const SHEET: string[] = [
 const SUPER_RARE = new Set(['ぬ', 'を', 'ん']);
 const RARE = new Set(['ね', 'む', 'へ', 'や', 'ゆ', 'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ']);
 
+const COLOR_VARIANT_WEIGHT_RATIO = 0.04;
+const COLOR_VARIANT_COLORS = [
+  { glyphColor: '#008F7A', glowColor: '#7FFFE5' },
+  { glyphColor: '#D93668', glowColor: '#FFC1D0' },
+  { glyphColor: '#5E9E00', glowColor: '#D8FF7A' },
+  { glyphColor: '#C75A00', glowColor: '#FFD08A' },
+  { glyphColor: '#0077CC', glowColor: '#A7F0FF' },
+];
+
 export const RARITY_WEIGHT: Record<Rarity, number> = {
   common: 10,
   rare: 4,
@@ -35,12 +44,26 @@ function rarityOf(glyph: string): Rarity {
 
 function toCharacter(glyph: string): GachaCharacter {
   const rarity = rarityOf(glyph);
-  return { id: `ja-${glyph}`, glyph, rarity, weight: RARITY_WEIGHT[rarity] };
+  const id = `ja-${glyph}`;
+  return { id, baseId: id, glyph, rarity, weight: RARITY_WEIGHT[rarity] };
 }
 
-const characters: GachaCharacter[] = SHEET.flatMap((row) =>
+const baseCharacters: GachaCharacter[] = SHEET.flatMap((row) =>
   [...row].filter((glyph) => glyph !== '　').map(toCharacter),
 );
+
+const colorVariantCharacters: GachaCharacter[] = baseCharacters.map((character, index) => ({
+  ...character,
+  id: `${character.id}-color`,
+  baseId: character.id,
+  weight: character.weight * COLOR_VARIANT_WEIGHT_RATIO,
+  colorVariant: {
+    label: '色違い',
+    ...COLOR_VARIANT_COLORS[index % COLOR_VARIANT_COLORS.length],
+  },
+}));
+
+const characters = [...baseCharacters, ...colorVariantCharacters];
 
 export const japanese: LanguageSet = {
   id: 'japanese',
