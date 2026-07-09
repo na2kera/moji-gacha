@@ -1,6 +1,7 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
+import { TabIconImages } from '@/constants/assets';
 import { Colors } from '@/constants/theme';
 
 export default function AppTabs() {
@@ -15,7 +16,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>ガチャ</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={TabIconImages.gacha}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -23,7 +24,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="collection">
         <NativeTabs.Trigger.Label>コレクション</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          src={TabIconImages.collection}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

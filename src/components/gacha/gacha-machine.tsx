@@ -10,6 +10,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { GachaImages } from '@/constants/assets';
+
 /** レバーを回す演出の長さ (ms)。画面側のタイミング制御と共有する */
 export const SPIN_DURATION = 1400;
 
@@ -49,12 +51,12 @@ export function GachaMachine({ spinning }: Props) {
   return (
     <Animated.View style={[styles.machine, machineStyle]}>
       <Image
-        source={require('@/assets/images/gacha/gacha-machine-body.png')}
+        source={GachaImages.machine.body}
         style={styles.machineBody}
       />
       <Animated.View style={[styles.handle, handleStyle]}>
         <Image
-          source={require('@/assets/images/gacha/gacha-machine-handle.png')}
+          source={GachaImages.machine.handle}
           style={styles.handleImage}
         />
       </Animated.View>

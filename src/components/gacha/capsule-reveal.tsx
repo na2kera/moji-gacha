@@ -14,6 +14,7 @@ import Animated, {
 
 import { Confetti } from './confetti';
 
+import { GachaImages } from '@/constants/assets';
 import { RarityColors } from '@/constants/rarity';
 import type { GachaCharacter } from '@/data/types';
 
@@ -26,12 +27,6 @@ export const OPEN_DURATION = 700;
 
 const CAPSULE_SIZE = 150;
 const CAPSULE_HALF_HEIGHT = CAPSULE_SIZE / 2;
-
-const capsuleTopImages = {
-  common: require('@/assets/images/gacha/capsule-top-common.png'),
-  rare: require('@/assets/images/gacha/capsule-top-rare.png'),
-  superRare: require('@/assets/images/gacha/capsule-top-super-rare.png'),
-};
 
 type Props = {
   character: GachaCharacter;
@@ -116,7 +111,7 @@ export function CapsuleReveal({ character, stage }: Props) {
       <Animated.View style={[styles.flash, flashStyle]} />
       {character.rarity === 'superRare' && stage === 'open' && (
         <Image
-          source={require('@/assets/images/gacha/super-rare-aura.png')}
+          source={GachaImages.effects.superRareAura}
           style={styles.superRareAura}
         />
       )}
@@ -131,11 +126,14 @@ export function CapsuleReveal({ character, stage }: Props) {
 
       <Animated.View style={[styles.capsule, capsuleStyle]} pointerEvents="none">
         <Animated.View style={[styles.capsuleHalf, styles.capsuleTop, topHalfStyle]}>
-          <Image source={capsuleTopImages[character.rarity]} style={styles.capsuleImage} />
+          <Image
+            source={GachaImages.capsule.top[character.rarity]}
+            style={styles.capsuleImage}
+          />
         </Animated.View>
         <Animated.View style={[styles.capsuleHalf, styles.capsuleBottom, bottomHalfStyle]}>
           <Image
-            source={require('@/assets/images/gacha/capsule-bottom.png')}
+            source={GachaImages.capsule.bottom}
             style={styles.capsuleImage}
           />
         </Animated.View>

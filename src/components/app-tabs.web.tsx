@@ -6,6 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
+import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 
@@ -13,6 +14,7 @@ import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
+import { TabIconImages } from '@/constants/assets';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
@@ -22,10 +24,10 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>ガチャ</TabButton>
+            <TabButton icon={TabIconImages.gacha}>ガチャ</TabButton>
           </TabTrigger>
           <TabTrigger name="collection" href="/collection" asChild>
-            <TabButton>コレクション</TabButton>
+            <TabButton icon={TabIconImages.collection}>コレクション</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -33,12 +35,26 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+type TabButtonProps = TabTriggerSlotProps & {
+  icon: number;
+};
+
+export function TabButton({ children, icon, isFocused, ...props }: TabButtonProps) {
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const tintColor = isFocused ? colors.text : colors.textSecondary;
+
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>
+        <Image
+          source={icon}
+          style={styles.tabIcon}
+          tintColor={tintColor}
+          contentFit="contain"
+        />
         <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
           {children}
         </ThemedText>
@@ -104,6 +120,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  tabIcon: {
+    width: 16,
+    height: 16,
   },
   externalPressable: {
     flexDirection: 'row',
