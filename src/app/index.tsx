@@ -15,6 +15,7 @@ import { japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
+import { shareGeneric, shareToX } from '@/lib/share';
 import { useCollectionStore } from '@/store/collection';
 
 type Phase = 'idle' | 'spinning' | 'rolling' | 'opening' | 'result';
@@ -167,6 +168,29 @@ export default function GachaScreen() {
                 {result.isNew ? 'はじめてゲット!' : `${resultCount} 個目`}
               </ThemedText>
 
+              <View style={styles.shareButtons}>
+                <Pressable
+                  onPress={() => shareToX(result.character)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.shareButtonX,
+                    pressed && styles.spinButtonPressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.shareButtonXText}>
+                    Xでシェア
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => shareGeneric(result.character)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.secondaryButton,
+                    pressed && styles.spinButtonPressed,
+                  ]}>
+                  <ThemedText type="smallBold">シェアする</ThemedText>
+                </Pressable>
+              </View>
+
               <View style={styles.resultButtons}>
                 <Pressable onPress={close} style={styles.secondaryButton}>
                   <ThemedText type="smallBold">とじる</ThemedText>
@@ -282,6 +306,25 @@ const styles = StyleSheet.create({
     lineHeight: 100,
     fontWeight: '700',
     color: '#1A1A1A',
+  },
+  shareButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  shareButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonX: {
+    backgroundColor: '#000000',
+  },
+  shareButtonXText: {
+    color: '#FFFFFF',
   },
   resultButtons: {
     flexDirection: 'row',
