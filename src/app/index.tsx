@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CapsuleReveal, DROP_DURATION, OPEN_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
+import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,7 +17,7 @@ import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
 import { useCollectionStore } from '@/store/collection';
 
-type Phase = 'idle' | 'spinning' | 'dropping' | 'opening' | 'result';
+type Phase = 'idle' | 'spinning' | 'rolling' | 'opening' | 'result';
 
 type DrawResult = {
   character: GachaCharacter;
@@ -52,8 +52,8 @@ export default function GachaScreen() {
     await delay(SPIN_DURATION);
     clearInterval(tick);
 
-    setPhase('dropping');
-    await delay(DROP_DURATION);
+    setPhase('rolling');
+    await delay(ROLL_DURATION);
     haptics.heavy();
     await delay(WOBBLE_DURATION);
 
@@ -80,7 +80,7 @@ export default function GachaScreen() {
     void spin();
   };
 
-  const overlayVisible = phase === 'dropping' || phase === 'opening' || phase === 'result';
+  const overlayVisible = phase === 'rolling' || phase === 'opening' || phase === 'result';
 
   return (
     <ThemedView style={styles.container}>
@@ -125,7 +125,7 @@ export default function GachaScreen() {
           {result && (
             <CapsuleReveal
               character={result.character}
-              stage={phase === 'dropping' ? 'drop' : 'open'}
+              stage={phase === 'rolling' ? 'roll' : 'open'}
             />
           )}
           {phase === 'result' && result && (
