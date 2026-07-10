@@ -17,6 +17,7 @@ import { Spacing } from '@/constants/theme';
 import type { GachaCharacter } from '@/data/types';
 import { useTheme } from '@/hooks/use-theme';
 import { haptics } from '@/lib/haptics';
+import { shareGeneric, shareToX } from '@/lib/share';
 import { useCollectionStore } from '@/store/collection';
 
 function formatDate(iso: string) {
@@ -130,6 +131,33 @@ export function CharacterShowcase({ baseCharacter, variants }: Props) {
           <ThemedText type="small" themeColor="textSecondary">
             未獲得
           </ThemedText>
+        )}
+
+        {selectedEntry && (
+          <View style={styles.shareButtons}>
+            <Pressable
+              onPress={() => shareToX(selected)}
+              style={({ pressed }) => [
+                styles.shareButton,
+                styles.shareButtonX,
+                pressed && styles.swatchPressed,
+              ]}>
+              <ThemedText type="smallBold" style={styles.shareButtonXText}>
+                Xでシェア
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => shareGeneric(selected)}
+              style={({ pressed }) => [
+                styles.shareButton,
+                styles.shareButtonGeneric,
+                pressed && styles.swatchPressed,
+              ]}>
+              <ThemedText type="smallBold" style={styles.shareButtonGenericText}>
+                シェアする
+              </ThemedText>
+            </Pressable>
+          </View>
         )}
       </ThemedView>
 
@@ -246,6 +274,31 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
+  },
+  shareButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  shareButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonX: {
+    backgroundColor: '#000000',
+  },
+  shareButtonXText: {
+    color: '#FFFFFF',
+  },
+  shareButtonGeneric: {
+    backgroundColor: '#E5484D',
+  },
+  shareButtonGenericText: {
+    color: '#FFFFFF',
   },
   swatchSection: {
     gap: Spacing.two,
