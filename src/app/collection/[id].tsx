@@ -1,12 +1,22 @@
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
+import { CharacterHero } from '@/components/collection/character-hero';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
+import { RarityColors } from '@/constants/rarity';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { characterById, variantsByBaseId } from '@/data/japanese';
+import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { useCollectionStore } from '@/store/collection';
 
@@ -18,12 +28,68 @@ function formatDate(iso: string) {
   });
 }
 
+function formatShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString('ja-JP');
+}
+
+function formatRate(rate: number) {
+  return `${rate < 1 ? rate.toFixed(2) : rate.toFixed(1)}%`;
+}
+
+/** 下からふわっと現れる登場演出。delay をずらして順番に見せる */
+function FadeInUp({
+  delay,
+  style,
+  children,
+}: {
+  delay: number;
+  style?: ViewStyle;
+  children: ReactNode;
+}) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withDelay(
+      delay,
+      withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [progress, delay]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (1 - progress.value) * 16 }],
+  }));
+
+  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
+}
+
+function StatCard({ emoji, value, label }: { emoji: string; value: string; label: string }) {
+  return (
+    <ThemedView type="backgroundElement" style={styles.statCard}>
+      <ThemedText style={styles.statEmoji}>{emoji}</ThemedText>
+      <ThemedText type="smallBold" style={styles.statValue}>
+        {value}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
+        {label}
+      </ThemedText>
+    </ThemedView>
+  );
+}
+
 function VariantRow({ variant }: { variant: GachaCharacter }) {
   const entry = useCollectionStore((state) => state.entries[variant.id]);
+  const glowColor = variant.colorVariant?.glowColor;
 
   return (
-    <ThemedView type="backgroundElement" style={styles.variantRow}>
-      <View style={styles.variantGlyphBox}>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.variantRow, entry && glowColor && { borderColor: glowColor }]}>
+      <View
+        style={[
+          styles.variantGlyphBox,
+          entry && glowColor && { backgroundColor: `${glowColor}40` },
+        ]}>
         {entry ? (
           <ThemedText
             type="subtitle"
@@ -44,11 +110,41 @@ function VariantRow({ variant }: { variant: GachaCharacter }) {
           </ThemedText>
         ) : (
           <ThemedText type="small" themeColor="textSecondary">
-            未獲得
+            まだ出ていない…
           </ThemedText>
         )}
       </View>
+      {entry && (
+        <ThemedText type="smallBold" style={{ color: variant.colorVariant?.glyphColor }}>
+          GET!
+        </ThemedText>
+      )}
     </ThemedView>
+  );
+}
+
+/** 未獲得のときにゆっくり明滅する「?」 */
+function LockedGlyph() {
+  const pulse = useSharedValue(0);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+  }, [pulse]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.25 + pulse.value * 0.35,
+  }));
+
+  return (
+    <Animated.View style={style}>
+      <ThemedText themeColor="textSecondary" style={styles.lockedHeroGlyph}>
+        ?
+      </ThemedText>
+    </Animated.View>
   );
 }
 
@@ -59,6 +155,15 @@ export default function CharacterDetailScreen() {
     character ? state.entries[character.id] : undefined,
   );
   const variants = character ? (variantsByBaseId.get(character.id) ?? []) : [];
+  const ownedVariantCount = useCollectionStore(
+    (state) => variants.filter((variant) => state.entries[variant.id]).length,
+  );
+
+  const totalWeight = useMemo(
+    () => japanese.characters.reduce((sum, c) => sum + c.weight, 0),
+    [],
+  );
+  const dropRate = character ? (character.weight / totalWeight) * 100 : 0;
 
   return (
     <ThemedView style={styles.container}>
@@ -80,38 +185,50 @@ export default function CharacterDetailScreen() {
 
           {character && entry ? (
             <>
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.glyphCard, { borderColor: RarityColors[character.rarity] }]}>
-                <ThemedText
-                  type="smallBold"
-                  style={{ color: RarityColors[character.rarity] }}>
-                  {'★'.repeat(RarityStars[character.rarity])} {RarityLabels[character.rarity]}
-                </ThemedText>
-                <ThemedText style={styles.glyph}>{character.glyph}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  ×{entry.count} / {formatDate(entry.firstObtainedAt)} に初獲得
-                </ThemedText>
-              </ThemedView>
+              <FadeInUp delay={0}>
+                <CharacterHero character={character} />
+              </FadeInUp>
+
+              <FadeInUp delay={200} style={styles.statRow}>
+                <StatCard emoji="🎯" value={`×${entry.count}`} label="獲得数" />
+                <StatCard emoji="📅" value={formatShortDate(entry.firstObtainedAt)} label="初獲得" />
+                <StatCard emoji="🎲" value={formatRate(dropRate)} label="排出率" />
+              </FadeInUp>
 
               {variants.length > 0 && (
-                <View style={styles.variantSection}>
-                  <ThemedText type="smallBold">色違い</ThemedText>
-                  {variants.map((variant) => (
-                    <VariantRow key={variant.id} variant={variant} />
+                <FadeInUp delay={350} style={styles.variantSection}>
+                  <View style={styles.variantHeader}>
+                    <ThemedText type="smallBold">色違いコレクション</ThemedText>
+                    <View
+                      style={[
+                        styles.variantCountBadge,
+                        { backgroundColor: RarityColors[character.rarity] },
+                      ]}>
+                      <ThemedText type="smallBold" style={styles.variantCountText}>
+                        {ownedVariantCount} / {variants.length}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {variants.map((variant, index) => (
+                    <FadeInUp key={variant.id} delay={450 + index * 90}>
+                      <VariantRow variant={variant} />
+                    </FadeInUp>
                   ))}
-                </View>
+                </FadeInUp>
               )}
             </>
           ) : (
-            <ThemedView type="backgroundElement" style={styles.glyphCard}>
-              <ThemedText type="subtitle" themeColor="textSecondary" style={styles.lockedGlyph}>
-                ?
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                まだ獲得していません
-              </ThemedText>
-            </ThemedView>
+            <FadeInUp delay={0}>
+              <ThemedView type="backgroundElement" style={styles.lockedCard}>
+                <LockedGlyph />
+                <ThemedText type="small" themeColor="textSecondary">
+                  まだ獲得していません
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  ガチャを回せば出会えるかも…？
+                </ThemedText>
+              </ThemedView>
+            </FadeInUp>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -151,36 +268,60 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
-  glyphCard: {
-    alignItems: 'center',
+  statRow: {
+    flexDirection: 'row',
     gap: Spacing.two,
-    borderRadius: Spacing.four,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    paddingHorizontal: Spacing.six,
-    paddingVertical: Spacing.four,
   },
-  glyph: {
-    fontSize: 84,
-    lineHeight: 100,
-    fontWeight: '700',
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.half,
+    borderRadius: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.one,
   },
-  lockedGlyph: {
-    opacity: 0.4,
+  statEmoji: {
+    fontSize: 20,
+    lineHeight: 26,
+  },
+  statValue: {
+    fontSize: 15,
+  },
+  statLabel: {
+    fontSize: 11,
+    lineHeight: 16,
   },
   variantSection: {
     gap: Spacing.two,
+  },
+  variantHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  variantCountBadge: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 1,
+  },
+  variantCountText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    lineHeight: 18,
   },
   variantRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
     borderRadius: Spacing.three,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
     padding: Spacing.three,
   },
   variantGlyphBox: {
     width: 56,
     height: 56,
+    borderRadius: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -191,5 +332,20 @@ const styles = StyleSheet.create({
   variantInfo: {
     flex: 1,
     gap: Spacing.half,
+  },
+  lockedGlyph: {
+    opacity: 0.4,
+  },
+  lockedCard: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.four,
+    paddingHorizontal: Spacing.six,
+    paddingVertical: Spacing.five,
+  },
+  lockedHeroGlyph: {
+    fontSize: 72,
+    lineHeight: 88,
+    fontWeight: '700',
   },
 });
