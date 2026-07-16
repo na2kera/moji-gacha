@@ -8,7 +8,7 @@ import classes from './animated-icon.module.css';
 import { AppImages } from '@/constants/assets';
 
 const DURATION = 300;
-const SPLASH_DURATION = 900;
+const SPLASH_DURATION = 1400;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
@@ -25,9 +25,8 @@ export function AnimatedSplashOverlay() {
       exiting={FadeOut.duration(DURATION)}
       style={styles.splashOverlay}
       accessibilityElementsHidden>
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.splashBackground} />
-      <Animated.View entering={logoKeyframe.duration(DURATION)} style={styles.splashImageContainer}>
-        <Image style={styles.splashImage} source={AppImages.splashIcon} />
+      <Animated.View entering={splashTitleKeyframe.duration(650)} style={styles.splashTitleContainer}>
+        <Image style={styles.splashTitle} source={AppImages.launchTitle} contentFit="contain" />
       </Animated.View>
     </Animated.View>
   );
@@ -60,6 +59,23 @@ const logoKeyframe = new Keyframe({
     transform: [{ scale: 1 }],
     opacity: 1,
     easing: Easing.elastic(1.2),
+  },
+});
+
+const splashTitleKeyframe = new Keyframe({
+  0: {
+    opacity: 0,
+    transform: [{ scale: 0.94 }],
+  },
+  65: {
+    opacity: 1,
+    transform: [{ scale: 1.02 }],
+    easing: Easing.out(Easing.cubic),
+  },
+  100: {
+    opacity: 1,
+    transform: [{ scale: 1 }],
+    easing: Easing.out(Easing.quad),
   },
 });
 
@@ -129,20 +145,11 @@ const styles = StyleSheet.create({
     height: 128,
     position: 'absolute',
   },
-  splashBackground: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5484D',
-    borderRadius: 40,
-    borderWidth: 3,
-    height: 128,
-    position: 'absolute',
-    width: 128,
+  splashTitle: {
+    height: 475,
+    width: 300,
   },
-  splashImage: {
-    height: 71,
-    width: 76,
-  },
-  splashImageContainer: {
+  splashTitleContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },

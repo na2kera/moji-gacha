@@ -1,4 +1,5 @@
 export const AppImages = {
+  launchTitle: require('@/assets/images/brand/moji-gacha-launch-logo-v1.png'),
   splashIcon: require('@/assets/images/splash-icon.png'),
   logoGlow: require('@/assets/images/logo-glow.png'),
 } as const;
