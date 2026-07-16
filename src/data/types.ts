@@ -15,6 +15,8 @@ export type GachaCharacter = {
   glyph: string;
   rarity: Rarity;
   colorVariant?: ColorVariant;
+  /** 濁音・半濁音。ガチャの開封演出を通常の五十音と変えるのに使う */
+  soundMark?: 'dakuten' | 'handakuten';
   /** 抽選の重み。大きいほど出やすい */
   weight: number;
 };

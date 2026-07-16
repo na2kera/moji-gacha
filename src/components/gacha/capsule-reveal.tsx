@@ -3,6 +3,8 @@ import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  Extrapolation,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -46,6 +48,11 @@ export function CapsuleReveal({ character, stage }: Props) {
   const openProgress = useSharedValue(0);
   const glyphScale = useSharedValue(0);
   const flash = useSharedValue(0);
+  const shockwave = useSharedValue(0);
+  const glyphShake = useSharedValue(0);
+
+  // 濁音・半濁音は「音が響く」イメージで揺れと衝撃波を加えた特別演出にする
+  const hasSoundMark = character.soundMark != null;
 
   useEffect(() => {
     if (stage === 'roll') {
@@ -53,12 +60,13 @@ export function CapsuleReveal({ character, stage }: Props) {
         duration: ROLL_DURATION,
         easing: Easing.out(Easing.cubic),
       });
+      const wobbleAmp = hasSoundMark ? 13 : 7;
       wobble.value = withDelay(
         ROLL_DURATION,
         withRepeat(
           withSequence(
-            withTiming(-7, { duration: 80 }),
-            withTiming(7, { duration: 80 }),
+            withTiming(-wobbleAmp, { duration: 80 }),
+            withTiming(wobbleAmp, { duration: 80 }),
           ),
           4,
           true,
@@ -82,8 +90,25 @@ export function CapsuleReveal({ character, stage }: Props) {
         GLYPH_DELAY,
         withSpring(1, { damping: 10, stiffness: 140 }),
       );
+      if (hasSoundMark) {
+        shockwave.value = withDelay(
+          GLYPH_DELAY,
+          withTiming(1, { duration: 750, easing: Easing.out(Easing.cubic) }),
+        );
+        glyphShake.value = withDelay(
+          GLYPH_DELAY + 240,
+          withRepeat(
+            withSequence(
+              withTiming(-5, { duration: 45 }),
+              withTiming(5, { duration: 45 }),
+            ),
+            4,
+            true,
+          ),
+        );
+      }
     }
-  }, [stage, rollX, wobble, openProgress, glyphScale, flash]);
+  }, [stage, hasSoundMark, rollX, wobble, openProgress, glyphScale, flash, shockwave, glyphShake]);
 
   const capsuleStyle = useAnimatedStyle(() => {
     // 移動距離に合わせて回転させ、床を転がってくる見た目にする
@@ -118,7 +143,32 @@ export function CapsuleReveal({ character, stage }: Props) {
   }));
 
   const glyphStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glyphScale.value }],
+    transform: [{ scale: glyphScale.value }, { translateX: glyphShake.value }],
+  }));
+
+  // 内側→外側の順で時間差をつけて広がる 2 本の衝撃波リング
+  const shockwaveInnerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(shockwave.value, [0, 0.1, 1], [0, 0.9, 0]),
+    transform: [{ scale: interpolate(shockwave.value, [0, 1], [0.4, 2.1]) }],
+  }));
+
+  const shockwaveOuterStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      shockwave.value,
+      [0, 0.3, 0.4, 1],
+      [0, 0, 0.7, 0],
+      Extrapolation.CLAMP,
+    ),
+    transform: [
+      {
+        scale: interpolate(
+          shockwave.value,
+          [0.3, 1],
+          [0.4, 2.7],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
   }));
 
   const glowColor = character.colorVariant?.glowColor ?? RarityColors[character.rarity];
@@ -134,6 +184,17 @@ export function CapsuleReveal({ character, stage }: Props) {
         />
       )}
       {stage === 'open' && <Confetti />}
+
+      {hasSoundMark && stage === 'open' && (
+        <>
+          <Animated.View
+            style={[styles.shockwave, { borderColor: glowColor }, shockwaveInnerStyle]}
+          />
+          <Animated.View
+            style={[styles.shockwave, { borderColor: glowColor }, shockwaveOuterStyle]}
+          />
+        </>
+      )}
 
       <Animated.View style={[styles.glyphWrapper, glyphStyle]}>
         <View style={[styles.glyphGlow, { backgroundColor: glowColor }]} />
@@ -195,6 +256,13 @@ const styles = StyleSheet.create({
   capsuleImage: {
     width: CAPSULE_SIZE,
     height: CAPSULE_HALF_HEIGHT,
+  },
+  shockwave: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderWidth: 4,
   },
   superRareAura: {
     position: 'absolute',
