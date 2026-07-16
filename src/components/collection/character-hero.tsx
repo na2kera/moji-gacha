@@ -17,11 +17,27 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { GachaImages } from '@/constants/assets';
 import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
-import { Spacing } from '@/constants/theme';
+import { Fonts, Spacing } from '@/constants/theme';
+import { japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 
 const SPARKLE_COUNT = 10;
+
+const ROW_LABELS = ['あ行', 'か行', 'さ行', 'た行', 'な行', 'は行', 'ま行', 'や行', 'ら行', 'わ行', 'ん'];
+
+/** 五十音表での通し番号と行ラベル。図鑑の採番として表示する */
+function sheetPositionOf(baseId: string): { no: number; rowLabel: string } | undefined {
+  let no = 0;
+  for (let rowIndex = 0; rowIndex < japanese.sheetRows.length; rowIndex++) {
+    for (const cellId of japanese.sheetRows[rowIndex]) {
+      if (!cellId) continue;
+      no += 1;
+      if (cellId === baseId) return { no, rowLabel: ROW_LABELS[rowIndex] };
+    }
+  }
+  return undefined;
+}
 
 type SparkleSpec = {
   left: `${number}%`;
@@ -101,6 +117,7 @@ export function CharacterHero({ character }: Props) {
   const rarityColor = RarityColors[character.rarity];
   const glowColor = character.colorVariant?.glowColor ?? rarityColor;
   const sparkles = useMemo(() => createSparkles(), []);
+  const position = useMemo(() => sheetPositionOf(character.baseId), [character.baseId]);
 
   const glyphIn = useSharedValue(0);
   const pressBounce = useSharedValue(1);
@@ -148,10 +165,15 @@ export function CharacterHero({ character }: Props) {
       style={[styles.card, { borderColor: rarityColor }]}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: `${rarityColor}14` }]} />
 
-      <View style={[styles.badge, { backgroundColor: rarityColor }]}>
-        <ThemedText type="smallBold" style={styles.badgeText}>
-          {RarityLabels[character.rarity]}
+      <View style={styles.cardHeader}>
+        <ThemedText style={styles.cardNo}>
+          No.{String(position?.no ?? 0).padStart(2, '0')}
         </ThemedText>
+        {position && (
+          <ThemedText themeColor="textSecondary" style={styles.rowLabel}>
+            {position.rowLabel}
+          </ThemedText>
+        )}
       </View>
 
       <View style={styles.stage}>
@@ -185,6 +207,10 @@ export function CharacterHero({ character }: Props) {
           <Sparkle key={index} spec={spec} color={glowColor} />
         ))}
       </View>
+
+      <View style={[styles.ribbon, { backgroundColor: rarityColor }]} pointerEvents="none">
+        <ThemedText style={styles.ribbonText}>{RarityLabels[character.rarity]}</ThemedText>
+      </View>
     </ThemedView>
   );
 }
@@ -199,13 +225,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     overflow: 'hidden',
   },
-  badge: {
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.half,
+  cardHeader: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
-  badgeText: {
+  cardNo: {
+    fontFamily: Fonts.rounded,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  rowLabel: {
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  ribbon: {
+    position: 'absolute',
+    top: 18,
+    right: -36,
+    width: 140,
+    alignItems: 'center',
+    paddingVertical: 3,
+    transform: [{ rotate: '45deg' }],
+  },
+  ribbonText: {
     color: '#FFFFFF',
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
   },
   stage: {
     height: 190,

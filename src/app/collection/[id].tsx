@@ -15,7 +15,7 @@ import { CharacterHero } from '@/components/collection/character-hero';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { useCollectionStore } from '@/store/collection';
@@ -63,17 +63,25 @@ function FadeInUp({
   return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
 }
 
-function StatCard({ emoji, value, label }: { emoji: string; value: string; label: string }) {
+/** 駄菓子屋の値札のような点線リーダー付きの1行 */
+function SpecRow({ label, value }: { label: string; value: string }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.statCard}>
-      <ThemedText style={styles.statEmoji}>{emoji}</ThemedText>
-      <ThemedText type="smallBold" style={styles.statValue}>
-        {value}
+    <View style={styles.specRow}>
+      <ThemedText type="smallBold">{label}</ThemedText>
+      <ThemedText numberOfLines={1} themeColor="textSecondary" style={styles.specLeader}>
+        ・・・・・・・・・・・・・・・・・・・・・・・・・・・・・・・・
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
-        {label}
-      </ThemedText>
-    </ThemedView>
+      <ThemedText style={styles.specValue}>{value}</ThemedText>
+    </View>
+  );
+}
+
+/** 獲得済みを示す朱色の判子 */
+function GetStamp() {
+  return (
+    <View style={styles.stamp}>
+      <ThemedText style={styles.stampText}>ゲット</ThemedText>
+    </View>
   );
 }
 
@@ -114,11 +122,7 @@ function VariantRow({ variant }: { variant: GachaCharacter }) {
           </ThemedText>
         )}
       </View>
-      {entry && (
-        <ThemedText type="smallBold" style={{ color: variant.colorVariant?.glyphColor }}>
-          GET!
-        </ThemedText>
-      )}
+      {entry && <GetStamp />}
     </ThemedView>
   );
 }
@@ -189,10 +193,19 @@ export default function CharacterDetailScreen() {
                 <CharacterHero character={character} />
               </FadeInUp>
 
-              <FadeInUp delay={200} style={styles.statRow}>
-                <StatCard emoji="🎯" value={`×${entry.count}`} label="獲得数" />
-                <StatCard emoji="📅" value={formatShortDate(entry.firstObtainedAt)} label="初獲得" />
-                <StatCard emoji="🎲" value={formatRate(dropRate)} label="排出率" />
+              <FadeInUp delay={200}>
+                <ThemedView type="backgroundElement" style={styles.specCard}>
+                  <View style={styles.specTitleRow}>
+                    <View style={styles.specTitleLine} />
+                    <ThemedText type="smallBold" style={styles.specTitle}>
+                      きろく
+                    </ThemedText>
+                    <View style={styles.specTitleLine} />
+                  </View>
+                  <SpecRow label="獲得数" value={`×${entry.count}`} />
+                  <SpecRow label="初獲得" value={formatShortDate(entry.firstObtainedAt)} />
+                  <SpecRow label="排出率" value={formatRate(dropRate)} />
+                </ThemedView>
               </FadeInUp>
 
               {variants.length > 0 && (
@@ -202,9 +215,14 @@ export default function CharacterDetailScreen() {
                     <View
                       style={[
                         styles.variantCountBadge,
-                        { backgroundColor: RarityColors[character.rarity] },
+                        { borderColor: RarityColors[character.rarity] },
                       ]}>
-                      <ThemedText type="smallBold" style={styles.variantCountText}>
+                      <ThemedText
+                        type="smallBold"
+                        style={[
+                          styles.variantCountText,
+                          { color: RarityColors[character.rarity] },
+                        ]}>
                         {ownedVariantCount} / {variants.length}
                       </ThemedText>
                     </View>
@@ -268,28 +286,61 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
-  statRow: {
-    flexDirection: 'row',
+  specCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
     gap: Spacing.two,
   },
-  statCard: {
-    flex: 1,
+  specTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.half,
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.one,
+    gap: Spacing.two,
+    marginBottom: Spacing.one,
   },
-  statEmoji: {
-    fontSize: 20,
-    lineHeight: 26,
+  specTitleLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#88888855',
   },
-  statValue: {
-    fontSize: 15,
+  specTitle: {
+    fontFamily: Fonts.rounded,
+    letterSpacing: 4,
   },
-  statLabel: {
+  specRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  specLeader: {
+    flex: 1,
+    fontSize: 9,
+    lineHeight: 20,
+    letterSpacing: 2,
+    opacity: 0.5,
+  },
+  specValue: {
+    fontFamily: Fonts.rounded,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  stamp: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2.5,
+    borderColor: '#E5484D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-12deg' }],
+    opacity: 0.9,
+  },
+  stampText: {
+    color: '#E5484D',
+    fontFamily: Fonts.rounded,
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: 15,
+    fontWeight: '800',
   },
   variantSection: {
     gap: Spacing.two,
@@ -300,14 +351,16 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   variantCountBadge: {
+    borderWidth: 1.5,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.two,
     paddingVertical: 1,
   },
   variantCountText: {
-    color: '#FFFFFF',
+    fontFamily: Fonts.rounded,
     fontSize: 12,
     lineHeight: 18,
+    fontWeight: '800',
   },
   variantRow: {
     flexDirection: 'row',
@@ -340,6 +393,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     borderRadius: Spacing.four,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#88888866',
     paddingHorizontal: Spacing.six,
     paddingVertical: Spacing.five,
   },
