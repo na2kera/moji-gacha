@@ -1,15 +1,35 @@
 import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import Animated, { Easing, FadeOut, Keyframe } from 'react-native-reanimated';
 
 import classes from './animated-icon.module.css';
 
 import { AppImages } from '@/constants/assets';
 
 const DURATION = 300;
+const SPLASH_DURATION = 1400;
 
 export function AnimatedSplashOverlay() {
-  return null;
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), SPLASH_DURATION);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      exiting={FadeOut.duration(DURATION)}
+      style={styles.splashOverlay}
+      accessibilityElementsHidden>
+      <Animated.View entering={splashTitleKeyframe.duration(650)} style={styles.splashTitleContainer}>
+        <Image style={styles.splashTitle} source={AppImages.launchTitle} contentFit="contain" />
+      </Animated.View>
+    </Animated.View>
+  );
 }
 
 const keyframe = new Keyframe({
@@ -39,6 +59,23 @@ const logoKeyframe = new Keyframe({
     transform: [{ scale: 1 }],
     opacity: 1,
     easing: Easing.elastic(1.2),
+  },
+});
+
+const splashTitleKeyframe = new Keyframe({
+  0: {
+    opacity: 0,
+    transform: [{ scale: 0.94 }],
+  },
+  65: {
+    opacity: 1,
+    transform: [{ scale: 1.02 }],
+    easing: Easing.out(Easing.cubic),
+  },
+  100: {
+    opacity: 1,
+    transform: [{ scale: 1 }],
+    easing: Easing.out(Easing.quad),
   },
 });
 
@@ -107,5 +144,20 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     position: 'absolute',
+  },
+  splashTitle: {
+    height: 475,
+    width: 300,
+  },
+  splashTitleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    zIndex: 1000,
   },
 });
