@@ -8,7 +8,7 @@ import { CapsuleReveal, DROP_DURATION, OPEN_DURATION, WOBBLE_DURATION } from '@/
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { GachaImages } from '@/constants/assets';
+import { AppImages, GachaImages } from '@/constants/assets';
 import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { japanese } from '@/data/japanese';
@@ -91,6 +91,7 @@ export default function GachaScreen() {
       />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
+          <Image source={AppImages.splashIcon} style={styles.headerIcon} />
           <ThemedText type="subtitle">もじガチャ</ThemedText>
           <View style={styles.languageBadge}>
             <ThemedText type="smallBold" style={styles.languageBadgeText}>
@@ -209,6 +210,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  headerIcon: {
+    height: 42,
+    width: 44,
   },
   languageBadge: {
     backgroundColor: '#E5484D',
