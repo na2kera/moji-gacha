@@ -25,9 +25,6 @@ export function AnimatedSplashOverlay() {
       exiting={FadeOut.duration(DURATION)}
       style={styles.splashOverlay}
       accessibilityElementsHidden>
-      <Animated.View entering={glowKeyframe.duration(SPLASH_DURATION)} style={styles.splashGlow}>
-        <Image style={styles.splashGlow} source={AppImages.logoGlow} />
-      </Animated.View>
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.splashBackground} />
       <Animated.View entering={logoKeyframe.duration(DURATION)} style={styles.splashImageContainer}>
         <Image style={styles.splashImage} source={AppImages.splashIcon} />
@@ -133,16 +130,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   splashBackground: {
-    backgroundColor: '#E5484D',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5484D',
     borderRadius: 40,
+    borderWidth: 3,
     height: 128,
     position: 'absolute',
     width: 128,
-  },
-  splashGlow: {
-    height: 201,
-    position: 'absolute',
-    width: 201,
   },
   splashImage: {
     height: 71,
@@ -155,7 +149,7 @@ const styles = StyleSheet.create({
   splashOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
-    backgroundColor: '#E5484D',
+    backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     zIndex: 1000,
   },
