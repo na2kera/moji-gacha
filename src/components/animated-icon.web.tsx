@@ -1,15 +1,39 @@
 import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import Animated, { Easing, FadeOut, Keyframe } from 'react-native-reanimated';
 
 import classes from './animated-icon.module.css';
 
 import { AppImages } from '@/constants/assets';
 
 const DURATION = 300;
+const SPLASH_DURATION = 900;
 
 export function AnimatedSplashOverlay() {
-  return null;
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), SPLASH_DURATION);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      exiting={FadeOut.duration(DURATION)}
+      style={styles.splashOverlay}
+      accessibilityElementsHidden>
+      <Animated.View entering={glowKeyframe.duration(SPLASH_DURATION)} style={styles.splashGlow}>
+        <Image style={styles.splashGlow} source={AppImages.logoGlow} />
+      </Animated.View>
+      <Animated.View entering={keyframe.duration(DURATION)} style={styles.splashBackground} />
+      <Animated.View entering={logoKeyframe.duration(DURATION)} style={styles.splashImageContainer}>
+        <Image style={styles.splashImage} source={AppImages.splashIcon} />
+      </Animated.View>
+    </Animated.View>
+  );
 }
 
 const keyframe = new Keyframe({
@@ -107,5 +131,32 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     position: 'absolute',
+  },
+  splashBackground: {
+    backgroundColor: '#E5484D',
+    borderRadius: 40,
+    height: 128,
+    position: 'absolute',
+    width: 128,
+  },
+  splashGlow: {
+    height: 201,
+    position: 'absolute',
+    width: 201,
+  },
+  splashImage: {
+    height: 71,
+    width: 76,
+  },
+  splashImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    backgroundColor: '#E5484D',
+    justifyContent: 'center',
+    zIndex: 1000,
   },
 });
