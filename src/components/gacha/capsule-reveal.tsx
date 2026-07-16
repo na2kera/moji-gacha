@@ -18,36 +18,43 @@ import { GachaImages } from '@/constants/assets';
 import { RarityColors } from '@/constants/rarity';
 import type { GachaCharacter } from '@/data/types';
 
-/** カプセルが落ちてくる演出の長さ (ms) */
-export const DROP_DURATION = 900;
-/** 着地後にゆれる演出の長さ (ms) */
+/** カプセルが転がって登場する演出の長さ (ms) */
+export const ROLL_DURATION = 1100;
+/** 到着後にゆれる演出の長さ (ms) */
 export const WOBBLE_DURATION = 640;
 /** カプセルが開く演出の長さ (ms) */
 export const OPEN_DURATION = 700;
+/** 開き始めてから文字が飛び出すまでの間 (ms) */
+const GLYPH_DELAY = 360;
 
 const CAPSULE_SIZE = 150;
 const CAPSULE_HALF_HEIGHT = CAPSULE_SIZE / 2;
+// 上下パーツの素材は開いた口の縁まで描かれているため、
+// そのまま並べると半開きに見える。重ねて閉じた見た目にする
+const CAPSULE_OVERLAP = 30;
+const CAPSULE_HEIGHT = CAPSULE_HALF_HEIGHT * 2 - CAPSULE_OVERLAP;
+const ROLL_DISTANCE = 300;
 
 type Props = {
   character: GachaCharacter;
-  stage: 'drop' | 'open';
+  stage: 'roll' | 'open';
 };
 
 export function CapsuleReveal({ character, stage }: Props) {
-  const dropY = useSharedValue(-460);
+  const rollX = useSharedValue(-ROLL_DISTANCE);
   const wobble = useSharedValue(0);
   const openProgress = useSharedValue(0);
   const glyphScale = useSharedValue(0);
   const flash = useSharedValue(0);
 
   useEffect(() => {
-    if (stage === 'drop') {
-      dropY.value = withTiming(0, {
-        duration: DROP_DURATION,
-        easing: Easing.bounce,
+    if (stage === 'roll') {
+      rollX.value = withTiming(0, {
+        duration: ROLL_DURATION,
+        easing: Easing.out(Easing.cubic),
       });
       wobble.value = withDelay(
-        DROP_DURATION,
+        ROLL_DURATION,
         withRepeat(
           withSequence(
             withTiming(-7, { duration: 80 }),
@@ -59,24 +66,35 @@ export function CapsuleReveal({ character, stage }: Props) {
       );
     } else {
       wobble.value = withTiming(0, { duration: 80 });
-      flash.value = withSequence(
-        withTiming(1, { duration: 120 }),
-        withTiming(0, { duration: 420 }),
-      );
       openProgress.value = withTiming(1, {
         duration: OPEN_DURATION,
         easing: Easing.out(Easing.cubic),
       });
+      // 開き始めた瞬間に光がはじけ、少し遅れて中から文字が飛び出す
+      flash.value = withDelay(
+        120,
+        withSequence(
+          withTiming(1, { duration: 120 }),
+          withTiming(0, { duration: 420 }),
+        ),
+      );
       glyphScale.value = withDelay(
-        160,
+        GLYPH_DELAY,
         withSpring(1, { damping: 10, stiffness: 140 }),
       );
     }
-  }, [stage, dropY, wobble, openProgress, glyphScale, flash]);
+  }, [stage, rollX, wobble, openProgress, glyphScale, flash]);
 
-  const capsuleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dropY.value }, { rotate: `${wobble.value}deg` }],
-  }));
+  const capsuleStyle = useAnimatedStyle(() => {
+    // 移動距離に合わせて回転させ、床を転がってくる見た目にする
+    const rollRotation = (rollX.value / CAPSULE_HALF_HEIGHT) * (180 / Math.PI);
+    return {
+      transform: [
+        { translateX: rollX.value },
+        { rotate: `${rollRotation + wobble.value}deg` },
+      ],
+    };
+  });
 
   const topHalfStyle = useAnimatedStyle(() => ({
     opacity: 1 - openProgress.value * 0.9,
@@ -125,15 +143,16 @@ export function CapsuleReveal({ character, stage }: Props) {
       </Animated.View>
 
       <Animated.View style={[styles.capsule, capsuleStyle]} pointerEvents="none">
-        <Animated.View style={[styles.capsuleHalf, styles.capsuleTop, topHalfStyle]}>
-          <Image
-            source={GachaImages.capsule.top[character.rarity]}
-            style={styles.capsuleImage}
-          />
-        </Animated.View>
+        {/* 上パーツの縁で下パーツの口を隠すため、下パーツを先に描く */}
         <Animated.View style={[styles.capsuleHalf, styles.capsuleBottom, bottomHalfStyle]}>
           <Image
             source={GachaImages.capsule.bottom}
+            style={styles.capsuleImage}
+          />
+        </Animated.View>
+        <Animated.View style={[styles.capsuleHalf, styles.capsuleTop, topHalfStyle]}>
+          <Image
+            source={GachaImages.capsule.top[character.rarity]}
             style={styles.capsuleImage}
           />
         </Animated.View>
@@ -158,7 +177,7 @@ const styles = StyleSheet.create({
   },
   capsule: {
     width: CAPSULE_SIZE,
-    height: CAPSULE_SIZE,
+    height: CAPSULE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },

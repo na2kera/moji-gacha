@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CapsuleReveal, DROP_DURATION, OPEN_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
+import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -15,9 +15,10 @@ import { japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
+import { shareGeneric, shareToX } from '@/lib/share';
 import { useCollectionStore } from '@/store/collection';
 
-type Phase = 'idle' | 'spinning' | 'dropping' | 'opening' | 'result';
+type Phase = 'idle' | 'spinning' | 'rolling' | 'opening' | 'result';
 
 type DrawResult = {
   character: GachaCharacter;
@@ -52,8 +53,8 @@ export default function GachaScreen() {
     await delay(SPIN_DURATION);
     clearInterval(tick);
 
-    setPhase('dropping');
-    await delay(DROP_DURATION);
+    setPhase('rolling');
+    await delay(ROLL_DURATION);
     haptics.heavy();
     await delay(WOBBLE_DURATION);
 
@@ -80,7 +81,7 @@ export default function GachaScreen() {
     void spin();
   };
 
-  const overlayVisible = phase === 'dropping' || phase === 'opening' || phase === 'result';
+  const overlayVisible = phase === 'rolling' || phase === 'opening' || phase === 'result';
 
   return (
     <ThemedView style={styles.container}>
@@ -125,7 +126,7 @@ export default function GachaScreen() {
           {result && (
             <CapsuleReveal
               character={result.character}
-              stage={phase === 'dropping' ? 'drop' : 'open'}
+              stage={phase === 'rolling' ? 'roll' : 'open'}
             />
           )}
           {phase === 'result' && result && (
@@ -166,6 +167,29 @@ export default function GachaScreen() {
               <ThemedText type="small" themeColor="textSecondary">
                 {result.isNew ? 'はじめてゲット!' : `${resultCount} 個目`}
               </ThemedText>
+
+              <View style={styles.shareButtons}>
+                <Pressable
+                  onPress={() => shareToX(result.character)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.shareButtonX,
+                    pressed && styles.spinButtonPressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.shareButtonXText}>
+                    Xでシェア
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => shareGeneric(result.character)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.secondaryButton,
+                    pressed && styles.spinButtonPressed,
+                  ]}>
+                  <ThemedText type="smallBold">シェアする</ThemedText>
+                </Pressable>
+              </View>
 
               <View style={styles.resultButtons}>
                 <Pressable onPress={close} style={styles.secondaryButton}>
@@ -282,6 +306,25 @@ const styles = StyleSheet.create({
     lineHeight: 100,
     fontWeight: '700',
     color: '#1A1A1A',
+  },
+  shareButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  shareButton: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonX: {
+    backgroundColor: '#000000',
+  },
+  shareButtonXText: {
+    color: '#FFFFFF',
   },
   resultButtons: {
     flexDirection: 'row',

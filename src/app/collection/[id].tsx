@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Platform, Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,8 @@ import { RarityColors } from '@/constants/rarity';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
+import { haptics } from '@/lib/haptics';
+import { shareGeneric, shareToX } from '@/lib/share';
 import { useCollectionStore } from '@/store/collection';
 
 function formatDate(iso: string) {
@@ -85,45 +87,67 @@ function GetStamp() {
   );
 }
 
-function VariantRow({ variant }: { variant: GachaCharacter }) {
+function VariantRow({
+  variant,
+  selected,
+  onToggle,
+}: {
+  variant: GachaCharacter;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   const entry = useCollectionStore((state) => state.entries[variant.id]);
   const glowColor = variant.colorVariant?.glowColor;
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.variantRow, entry && glowColor && { borderColor: glowColor }]}>
-      <View
+    <Pressable
+      disabled={!entry}
+      onPress={onToggle}
+      style={({ pressed }) => pressed && styles.pressed}>
+      <ThemedView
+        type="backgroundElement"
         style={[
-          styles.variantGlyphBox,
-          entry && glowColor && { backgroundColor: `${glowColor}40` },
+          styles.variantRow,
+          entry && glowColor && { borderColor: glowColor },
+          selected && glowColor && { backgroundColor: `${glowColor}22` },
         ]}>
-        {entry ? (
-          <ThemedText
-            type="subtitle"
-            style={[styles.variantGlyph, { color: variant.colorVariant?.glyphColor }]}>
-            {variant.glyph}
-          </ThemedText>
-        ) : (
-          <ThemedText type="subtitle" themeColor="textSecondary" style={styles.lockedGlyph}>
-            ?
-          </ThemedText>
-        )}
-      </View>
-      <View style={styles.variantInfo}>
-        <ThemedText type="smallBold">{variant.colorVariant?.label ?? '色違い'}</ThemedText>
-        {entry ? (
-          <ThemedText type="small" themeColor="textSecondary">
-            ×{entry.count} / {formatDate(entry.firstObtainedAt)} に初獲得
-          </ThemedText>
-        ) : (
-          <ThemedText type="small" themeColor="textSecondary">
-            まだ出ていない…
-          </ThemedText>
-        )}
-      </View>
-      {entry && <GetStamp />}
-    </ThemedView>
+        <View
+          style={[
+            styles.variantGlyphBox,
+            entry && glowColor && { backgroundColor: `${glowColor}40` },
+          ]}>
+          {entry ? (
+            <ThemedText
+              type="subtitle"
+              style={[styles.variantGlyph, { color: variant.colorVariant?.glyphColor }]}>
+              {variant.glyph}
+            </ThemedText>
+          ) : (
+            <ThemedText type="subtitle" themeColor="textSecondary" style={styles.lockedGlyph}>
+              ?
+            </ThemedText>
+          )}
+        </View>
+        <View style={styles.variantInfo}>
+          <ThemedText type="smallBold">{variant.colorVariant?.label ?? '色違い'}</ThemedText>
+          {entry ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              ×{entry.count} / {formatDate(entry.firstObtainedAt)} に初獲得
+            </ThemedText>
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              まだ出ていない…
+            </ThemedText>
+          )}
+          {entry && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {selected ? 'タップでもとにもどす' : 'タップでみてみる'}
+            </ThemedText>
+          )}
+        </View>
+        {entry && <GetStamp />}
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -155,6 +179,8 @@ function LockedGlyph() {
 export default function CharacterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const character = id ? characterById.get(id) : undefined;
+  // 色違いをタップで見比べる (null は基本の姿)
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const entry = useCollectionStore((state) =>
     character ? state.entries[character.id] : undefined,
   );
@@ -163,11 +189,22 @@ export default function CharacterDetailScreen() {
     (state) => variants.filter((variant) => state.entries[variant.id]).length,
   );
 
+  const displayed =
+    (selectedVariantId && variants.find((v) => v.id === selectedVariantId)) || character;
+  const displayedEntry = useCollectionStore((state) =>
+    displayed ? state.entries[displayed.id] : undefined,
+  );
+
   const totalWeight = useMemo(
     () => japanese.characters.reduce((sum, c) => sum + c.weight, 0),
     [],
   );
-  const dropRate = character ? (character.weight / totalWeight) * 100 : 0;
+  const dropRate = displayed ? (displayed.weight / totalWeight) * 100 : 0;
+
+  function toggleVariant(variantId: string) {
+    haptics.selection();
+    setSelectedVariantId((current) => (current === variantId ? null : variantId));
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -187,10 +224,10 @@ export default function CharacterDetailScreen() {
             </Pressable>
           </View>
 
-          {character && entry ? (
+          {character && entry && displayed ? (
             <>
               <FadeInUp delay={0}>
-                <CharacterHero character={character} />
+                <CharacterHero character={displayed} />
               </FadeInUp>
 
               <FadeInUp delay={200}>
@@ -202,14 +239,42 @@ export default function CharacterDetailScreen() {
                     </ThemedText>
                     <View style={styles.specTitleLine} />
                   </View>
-                  <SpecRow label="獲得数" value={`×${entry.count}`} />
-                  <SpecRow label="初獲得" value={formatShortDate(entry.firstObtainedAt)} />
+                  <SpecRow label="獲得数" value={`×${(displayedEntry ?? entry).count}`} />
+                  <SpecRow
+                    label="初獲得"
+                    value={formatShortDate((displayedEntry ?? entry).firstObtainedAt)}
+                  />
                   <SpecRow label="排出率" value={formatRate(dropRate)} />
                 </ThemedView>
               </FadeInUp>
 
+              <FadeInUp delay={300} style={styles.shareRow}>
+                <Pressable
+                  onPress={() => shareToX(displayed)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.shareButtonX,
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.shareButtonXText}>
+                    Xでシェア
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => shareGeneric(displayed)}
+                  style={({ pressed }) => [
+                    styles.shareButton,
+                    styles.shareButtonGeneric,
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.shareButtonGenericText}>
+                    シェアする
+                  </ThemedText>
+                </Pressable>
+              </FadeInUp>
+
               {variants.length > 0 && (
-                <FadeInUp delay={350} style={styles.variantSection}>
+                <FadeInUp delay={400} style={styles.variantSection}>
                   <View style={styles.variantHeader}>
                     <ThemedText type="smallBold">色違いコレクション</ThemedText>
                     <View
@@ -228,8 +293,12 @@ export default function CharacterDetailScreen() {
                     </View>
                   </View>
                   {variants.map((variant, index) => (
-                    <FadeInUp key={variant.id} delay={450 + index * 90}>
-                      <VariantRow variant={variant} />
+                    <FadeInUp key={variant.id} delay={500 + index * 90}>
+                      <VariantRow
+                        variant={variant}
+                        selected={variant.id === selectedVariantId}
+                        onToggle={() => toggleVariant(variant.id)}
+                      />
                     </FadeInUp>
                   ))}
                 </FadeInUp>
@@ -323,6 +392,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '800',
+  },
+  shareRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  shareButton: {
+    flex: 1,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonX: {
+    backgroundColor: '#000000',
+  },
+  shareButtonXText: {
+    color: '#FFFFFF',
+  },
+  shareButtonGeneric: {
+    backgroundColor: '#E5484D',
+  },
+  shareButtonGenericText: {
+    color: '#FFFFFF',
   },
   stamp: {
     width: 46,

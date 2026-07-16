@@ -124,8 +124,13 @@ export function CharacterHero({ character }: Props) {
   const glowPulse = useSharedValue(0);
   const auraRotate = useSharedValue(0);
 
+  // 初回マウント時と色違い切り替え時に、文字がバネで飛び出す
   useEffect(() => {
+    glyphIn.value = 0;
     glyphIn.value = withDelay(150, withSpring(1, { damping: 11, stiffness: 130 }));
+  }, [glyphIn, character.id]);
+
+  useEffect(() => {
     glowPulse.value = withRepeat(
       withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
       -1,
@@ -136,7 +141,7 @@ export function CharacterHero({ character }: Props) {
       -1,
       false,
     );
-  }, [glyphIn, glowPulse, auraRotate]);
+  }, [glowPulse, auraRotate]);
 
   const onPressGlyph = () => {
     haptics.light();
@@ -195,6 +200,14 @@ export function CharacterHero({ character }: Props) {
           </Animated.View>
         </Pressable>
       </View>
+
+      {character.colorVariant && (
+        <View style={[styles.variantChip, { backgroundColor: `${glowColor}33` }]}>
+          <ThemedText type="smallBold" style={{ color: character.colorVariant.glyphColor }}>
+            ✦ {character.colorVariant.label}
+          </ThemedText>
+        </View>
+      )}
 
       <View style={styles.starRow}>
         {Array.from({ length: RarityStars[character.rarity] }, (_, i) => (
@@ -290,6 +303,11 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 10,
+  },
+  variantChip: {
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
   },
   starRow: {
     flexDirection: 'row',
