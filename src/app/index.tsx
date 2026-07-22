@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -433,23 +433,25 @@ export default function GachaScreen() {
               <View style={styles.shareButtons}>
                 <Pressable
                   onPress={() => shareToX(result.character)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Xでシェア"
                   style={({ pressed }) => [
-                    styles.shareButton,
-                    styles.shareButtonX,
+                    styles.shareCircle,
+                    styles.shareCircleX,
                     pressed && styles.spinButtonPressed,
                   ]}>
-                  <ThemedText type="smallBold" style={styles.shareButtonXText}>
-                    Xでシェア
-                  </ThemedText>
+                  <Text style={styles.shareCircleXIcon}>X</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => shareGeneric(result.character)}
+                  accessibilityRole="button"
+                  accessibilityLabel="シェアする"
                   style={({ pressed }) => [
-                    styles.shareButton,
-                    styles.secondaryButton,
+                    styles.shareCircle,
+                    styles.shareCircleGeneric,
                     pressed && styles.spinButtonPressed,
                   ]}>
-                  <ThemedText type="smallBold">シェアする</ThemedText>
+                  <Text style={styles.shareCircleIcon}>📤</Text>
                 </Pressable>
               </View>
 
@@ -687,21 +689,33 @@ const styles = StyleSheet.create({
   shareButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'center',
+    gap: Spacing.three,
     marginTop: Spacing.two,
   },
-  shareButton: {
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    minHeight: 44,
+  shareCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shareButtonX: {
+  shareCircleX: {
     backgroundColor: Accent.xBrand,
   },
-  shareButtonXText: {
+  shareCircleGeneric: {
+    backgroundColor: '#F0F0F3',
+  },
+  // Xロゴ風に見せるため、手書きフォントではなくシステムフォントの太字で描く
+  shareCircleXIcon: {
     color: Accent.onXBrand,
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: '800',
+  },
+  shareCircleIcon: {
+    fontSize: 22,
+    lineHeight: 28,
   },
   resultButtons: {
     flexDirection: 'row',
