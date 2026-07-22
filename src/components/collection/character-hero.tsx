@@ -248,13 +248,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 18,
     lineHeight: 24,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   rowLabel: {
     fontFamily: Fonts.rounded,
     fontSize: 13,
     lineHeight: 20,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   ribbon: {
     position: 'absolute',
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   stage: {
     height: 190,
@@ -297,9 +297,10 @@ const styles = StyleSheet.create({
     borderRadius: 80,
   },
   glyph: {
+    fontFamily: Fonts.rounded,
     fontSize: 96,
     lineHeight: 120,
-    fontWeight: '700',
+    fontWeight: '600',
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 10,

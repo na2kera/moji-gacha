@@ -1,3 +1,4 @@
+import { KleeOne_400Regular, KleeOne_600SemiBold, useFonts } from '@expo-google-fonts/klee-one';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StyleSheet, useColorScheme } from 'react-native';
@@ -10,6 +11,14 @@ SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  // 手書き風フォント (Klee One)。読み込み完了までスプラッシュを表示したままにする
+  const [fontsLoaded] = useFonts({
+    KleeOne_400Regular,
+    KleeOne_600SemiBold,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
