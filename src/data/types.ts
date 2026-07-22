@@ -21,14 +21,28 @@ export type GachaCharacter = {
   weight: number;
 };
 
+export type SheetSection = {
+  /** 表示名 (例: '清音') */
+  title: string;
+  /** sheetRows におけるセクション先頭行のインデックス */
+  firstRow: number;
+  rowCount: number;
+};
+
 export type LanguageSet = {
   id: string;
   /** 表示名 (例: '日本語') */
   label: string;
+  /** 言語バッジに表示する国旗絵文字 */
+  flag: string;
   characters: GachaCharacter[];
   /**
    * コレクションシートのレイアウト。行ごとの文字ID配列。
    * null は空セル (例: や行の「やゆよ」以外)
    */
   sheetRows: (string | null)[][];
+  /** sheetRows と同じ並びの行ラベル (例: 'あ行')。null はラベルなし */
+  sheetRowLabels: (string | null)[];
+  /** コレクションシートのセクション区切り */
+  sheetSections: SheetSection[];
 };

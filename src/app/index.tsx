@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
   FadeIn,
+  SlideInLeft,
+  SlideInRight,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -18,13 +20,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { RatesModal } from '@/components/gacha/rates-modal';
+import { LanguageSwipe } from '@/components/language-swipe';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppImages, GachaImages } from '@/constants/assets';
 import { RarityCardBackgrounds, RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
 import { Accent, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { characterById, japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
+import { useLanguage, type SwitchDirection } from '@/hooks/use-language';
 import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
 import { applyLuckyBoost, getLuckyCharacter, localDateKey, LUCKY_WEIGHT_MULTIPLIER } from '@/lib/lucky';
@@ -41,9 +45,6 @@ type DrawResult = {
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** 図鑑(五十音表)のマス数。色違いは同じマスに入るので基本文字のみ数える */
-const SHEET_SLOT_COUNT = japanese.characters.filter((c) => c.id === c.baseId).length;
 
 /** 立体ボタンの「厚み」。押下時にこの分だけ沈む */
 const BUTTON_DEPTH = 6;
@@ -118,19 +119,27 @@ export default function GachaScreen() {
   const colorScheme = useColorScheme();
   const backgroundImage = GachaImages.background[colorScheme === 'dark' ? 'dark' : 'light'];
 
+  const { language, switchLanguage } = useLanguage();
+  // 最後に切り替えた方向。スライド演出の向きに使う (null = まだ切り替えていない)
+  const [switchDirection, setSwitchDirection] = useState<SwitchDirection | null>(null);
+
   const recordDraw = useCollectionStore((state) => state.recordDraw);
   const totalDraws = useCollectionStore((state) => state.totalDraws);
   const streakDays = useCollectionStore((state) => state.streakDays);
+  // 図鑑(文字表)のマス数。色違いは同じマスに入るので基本文字のみ数える
+  const sheetSlotCount = useMemo(
+    () => language.characters.filter((c) => c.id === c.baseId).length,
+    [language],
+  );
   // 図鑑のマス単位の進捗。色違いは基本文字と同じマスとして数える
   const obtainedCount = useCollectionStore((state) => {
     const ownedBaseIds = new Set<string>();
-    for (const id of Object.keys(state.entries)) {
-      const character = characterById.get(id);
-      if (character) ownedBaseIds.add(character.baseId);
+    for (const character of language.characters) {
+      if (state.entries[character.id]) ownedBaseIds.add(character.baseId);
     }
     return ownedBaseIds.size;
   });
-  const progress = SHEET_SLOT_COUNT === 0 ? 0 : obtainedCount / SHEET_SLOT_COUNT;
+  const progress = sheetSlotCount === 0 ? 0 : obtainedCount / sheetSlotCount;
   const resultCount = useCollectionStore((state) =>
     result ? (state.entries[result.character.id]?.count ?? 0) : 0,
   );
@@ -138,13 +147,20 @@ export default function GachaScreen() {
   const toggleSound = useSettingsStore((state) => state.toggleSound);
 
   // 毎日変わるラッキー文字。この文字 (色違い含む) は排出率アップ
-  const luckyCharacter = getLuckyCharacter(japanese.characters, localDateKey());
+  const luckyCharacter = getLuckyCharacter(language.characters, localDateKey());
+
+  const handleSwitchLanguage = (direction: SwitchDirection) => {
+    if (phase !== 'idle') return;
+    haptics.selection();
+    setSwitchDirection(direction);
+    switchLanguage(direction);
+  };
 
   const spin = async () => {
     if (busyRef.current) return;
     busyRef.current = true;
 
-    const character = drawCharacter(applyLuckyBoost(japanese.characters, luckyCharacter.baseId));
+    const character = drawCharacter(applyLuckyBoost(language.characters, luckyCharacter.baseId));
     // isNew は開封直前の recordDraw で確定させる。ここでは落下演出用に文字だけ保持する
     setResult({ character, isNew: false });
     setPhase('spinning');
@@ -189,6 +205,14 @@ export default function GachaScreen() {
 
   const overlayVisible = phase === 'rolling' || phase === 'opening' || phase === 'result';
 
+  // 切り替え方向に合わせて言語依存ブロックをスライドイン (初回表示は演出なし)
+  const languageEntering =
+    switchDirection == null
+      ? undefined
+      : switchDirection === 1
+        ? SlideInRight.springify().damping(18)
+        : SlideInLeft.springify().damping(18);
+
   return (
     <ThemedView style={styles.container}>
       <Image
@@ -196,75 +220,82 @@ export default function GachaScreen() {
         style={styles.backgroundImage}
         contentFit="cover"
       />
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Image source={AppImages.splashIcon} style={styles.headerIcon} />
-          <ThemedText type="subtitle">もじガチャ</ThemedText>
-          <View style={styles.languageBadge}>
-            <ThemedText type="smallBold" style={styles.languageBadgeText}>
-              {japanese.label}
-            </ThemedText>
+      <LanguageSwipe
+        enabled={phase === 'idle'}
+        onSwipe={handleSwitchLanguage}
+        style={styles.swipeArea}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.header}>
+            <Image source={AppImages.splashIcon} style={styles.headerIcon} />
+            <ThemedText type="subtitle">もじガチャ</ThemedText>
+            <Pressable
+              onPress={toggleSound}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={soundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
+              style={({ pressed }) => [styles.soundToggle, pressed && styles.spinButtonPressed]}>
+              <ThemedText style={styles.soundToggleIcon}>{soundEnabled ? '🔊' : '🔇'}</ThemedText>
+            </Pressable>
           </View>
-          <Pressable
-            onPress={toggleSound}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={soundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
-            style={({ pressed }) => [styles.soundToggle, pressed && styles.spinButtonPressed]}>
-            <ThemedText style={styles.soundToggleIcon}>{soundEnabled ? '🔊' : '🔇'}</ThemedText>
-          </Pressable>
-        </View>
-        <View style={styles.statusRow}>
-          <ThemedText type="small" themeColor="textSecondary">
-            これまでに {totalDraws} 回まわしました
-          </ThemedText>
-          {streakDays >= 2 && (
-            <View style={styles.streakChip}>
-              <ThemedText type="smallBold" style={styles.streakChipText}>
-                🔥 {streakDays}日連続
-              </ThemedText>
-            </View>
-          )}
-        </View>
-        <View style={styles.statusRow}>
-          <View style={styles.luckyChip}>
-            <ThemedText type="smallBold" style={styles.luckyChipText}>
-              ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
-            </ThemedText>
-          </View>
-          <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.ratesLink}>
-              排出率
-            </ThemedText>
-          </Pressable>
-        </View>
-
-        <Pressable
-          onPress={() => router.push('/collection')}
-          style={({ pressed }) => [pressed && styles.progressChipPressed]}>
-          <ThemedView type="backgroundElement" style={styles.progressChip}>
-            <ThemedText type="smallBold">
-              ずかん {obtainedCount} / {SHEET_SLOT_COUNT}
-            </ThemedText>
-            <View style={styles.progressChipTrack}>
-              <View style={[styles.progressChipFill, { width: `${progress * 100}%` }]} />
-            </View>
+          <LanguageSwitcher
+            language={language}
+            onSwitch={handleSwitchLanguage}
+            disabled={phase !== 'idle'}
+          />
+          <View style={styles.statusRow}>
             <ThemedText type="small" themeColor="textSecondary">
-              あつめた
+              これまでに {totalDraws} 回まわしました
             </ThemedText>
-          </ThemedView>
-        </Pressable>
+            {streakDays >= 2 && (
+              <View style={styles.streakChip}>
+                <ThemedText type="smallBold" style={styles.streakChipText}>
+                  🔥 {streakDays}日連続
+                </ThemedText>
+              </View>
+            )}
+          </View>
+          <Animated.View key={language.id} entering={languageEntering} style={styles.languageBlock}>
+            <View style={styles.statusRow}>
+              <View style={styles.luckyChip}>
+                <ThemedText type="smallBold" style={styles.luckyChipText}>
+                  ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
+                </ThemedText>
+              </View>
+              <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.ratesLink}>
+                  排出率
+                </ThemedText>
+              </Pressable>
+            </View>
 
-        <View style={styles.machineArea}>
-          <GachaMachine spinning={phase === 'spinning'} onPress={phase === 'idle' ? spin : undefined} />
-        </View>
+            <Pressable
+              onPress={() => router.push('/collection')}
+              style={({ pressed }) => [pressed && styles.progressChipPressed]}>
+              <ThemedView type="backgroundElement" style={styles.progressChip}>
+                <ThemedText type="smallBold">
+                  ずかん {obtainedCount} / {sheetSlotCount}
+                </ThemedText>
+                <View style={styles.progressChipTrack}>
+                  <View style={[styles.progressChipFill, { width: `${progress * 100}%` }]} />
+                </View>
+                <ThemedText type="small" themeColor="textSecondary">
+                  あつめた
+                </ThemedText>
+              </ThemedView>
+            </Pressable>
+          </Animated.View>
 
-        <SpinButton
-          label={phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
-          disabled={phase !== 'idle'}
-          onPress={spin}
-        />
-      </SafeAreaView>
+          <View style={styles.machineArea}>
+            <GachaMachine spinning={phase === 'spinning'} onPress={phase === 'idle' ? spin : undefined} />
+          </View>
+
+          <SpinButton
+            label={phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
+            disabled={phase !== 'idle'}
+            onPress={spin}
+          />
+        </SafeAreaView>
+      </LanguageSwipe>
 
       {overlayVisible && (
         <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
@@ -370,7 +401,7 @@ export default function GachaScreen() {
       <RatesModal
         visible={ratesVisible}
         onClose={() => setRatesVisible(false)}
-        characters={japanese.characters}
+        characters={language.characters}
         luckyGlyph={luckyCharacter.glyph}
       />
     </ThemedView>
@@ -388,11 +419,17 @@ const styles = StyleSheet.create({
     opacity: 0.56,
     pointerEvents: 'none',
   },
+  swipeArea: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
   safeArea: {
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    // web はタブバーが画面上部に浮いているため、ヘッダーがその下に隠れないよう余白を広げる
+    paddingTop: Platform.select({ web: 72 }) ?? Spacing.four,
     paddingBottom: BottomTabInset + Spacing.three,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
@@ -406,14 +443,10 @@ const styles = StyleSheet.create({
     height: 42,
     width: 44,
   },
-  languageBadge: {
-    backgroundColor: Accent.primary,
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.half,
-  },
-  languageBadgeText: {
-    color: Accent.onPrimary,
+  languageBlock: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   progressChip: {
     flexDirection: 'row',

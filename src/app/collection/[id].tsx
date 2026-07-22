@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
 import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
-import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
+import { characterById, languageOfCharacter, variantsByBaseId } from '@/data/languages';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 import { shareGeneric, shareToX } from '@/lib/share';
@@ -195,11 +195,13 @@ export default function CharacterDetailScreen() {
     displayed ? state.entries[displayed.id] : undefined,
   );
 
+  // 排出率はその文字が属する言語の抽選プール内で計算する
+  const language = character ? languageOfCharacter.get(character.id) : undefined;
   const totalWeight = useMemo(
-    () => japanese.characters.reduce((sum, c) => sum + c.weight, 0),
-    [],
+    () => language?.characters.reduce((sum, c) => sum + c.weight, 0) ?? 0,
+    [language],
   );
-  const dropRate = displayed ? (displayed.weight / totalWeight) * 100 : 0;
+  const dropRate = displayed && totalWeight > 0 ? (displayed.weight / totalWeight) * 100 : 0;
 
   function toggleVariant(variantId: string) {
     haptics.selection();
