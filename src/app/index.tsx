@@ -24,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { RatesModal } from '@/components/gacha/rates-modal';
+import { RevealBackdrop } from '@/components/gacha/reveal-backdrop';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -370,6 +371,12 @@ export default function GachaScreen() {
       {overlayVisible && (
         <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
           {result && (
+            <RevealBackdrop
+              phase={phase === 'rolling' ? 'rolling' : phase === 'opening' ? 'opening' : 'result'}
+              rarity={result.character.rarity}
+            />
+          )}
+          {result && (
             <CapsuleReveal
               character={result.character}
               stage={phase === 'rolling' ? 'roll' : 'open'}
@@ -628,7 +635,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(10, 10, 20, 0.88)',
+    backgroundColor: '#080B18',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.four,
