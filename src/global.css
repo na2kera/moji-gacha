@@ -7,3 +7,8 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* マウスでの横スワイプ中にブラウザ標準の画像ドラッグが始まってジェスチャーが中断されるのを防ぐ */
+img {
+  -webkit-user-drag: none;
+}

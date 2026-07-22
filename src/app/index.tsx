@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   Easing,
   FadeIn,
+  runOnJS,
   SlideInLeft,
   SlideInRight,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
+  withSpring,
   withTiming,
   ZoomIn,
 } from 'react-native-reanimated';
@@ -20,7 +24,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { RatesModal } from '@/components/gacha/rates-modal';
-import { LanguageSwipe } from '@/components/language-swipe';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -156,6 +159,63 @@ export default function GachaScreen() {
     switchLanguage(direction);
   };
 
+  // ガチャマシンを指に追従させ、しきい値を超えたら画面外へ飛ばして言語を切り替えるカルーセル
+  const { width: screenWidth } = useWindowDimensions();
+  const machineDragX = useSharedValue(0);
+  // web ではパン成立後もマシンの Pressable が onPress を発火するため、
+  // ドラッグ中〜直後 (1 = ガード中) はタップ扱いを弾く (ネイティブは RNGH がタッチをキャンセルする)
+  const machineDragGuard = useSharedValue(0);
+
+  const machinePan = Gesture.Pan()
+    .enabled(phase === 'idle')
+    .activeOffsetX([-16, 16])
+    .failOffsetY([-24, 24])
+    // activeOffsetX を超えてはじめて成立するので、成立 = ドラッグとみなせる
+    .onStart(() => {
+      machineDragGuard.value = 1;
+    })
+    .onUpdate((event) => {
+      machineDragX.value = event.translationX;
+    })
+    .onFinalize(() => {
+      // 指を離した直後に飛んでくる onPress をやり過ごしてから解除する
+      machineDragGuard.value = withDelay(200, withTiming(0, { duration: 0 }));
+    })
+    .onEnd((event) => {
+      const shouldSwitch =
+        Math.abs(event.translationX) > 60 || Math.abs(event.velocityX) > 800;
+      if (!shouldSwitch) {
+        machineDragX.value = withSpring(0, { damping: 16, stiffness: 160 });
+        return;
+      }
+      const direction: SwitchDirection = event.translationX < 0 ? 1 : -1;
+      // 今のマシンを画面外へ飛ばし、次の言語のマシンが反対側から戻ってくる
+      machineDragX.value = withTiming(
+        -direction * screenWidth,
+        { duration: 170, easing: Easing.in(Easing.quad) },
+        (finished) => {
+          if (!finished) return;
+          runOnJS(handleSwitchLanguage)(direction);
+          machineDragX.value = direction * screenWidth;
+          machineDragX.value = withSpring(0, { damping: 15, stiffness: 120 });
+        },
+      );
+    });
+
+  const machineStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: machineDragX.value },
+      // 移動量に応じて少し傾け、転がして運んでいるような手ざわりにする
+      { rotate: `${machineDragX.value / 28}deg` },
+    ],
+  }));
+
+  // スワイプ中・直後に飛んでくるタップ扱いではガチャを回さない
+  const spinFromMachine = () => {
+    if (machineDragGuard.value > 0) return;
+    void spin();
+  };
+
   const spin = async () => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -220,82 +280,92 @@ export default function GachaScreen() {
         style={styles.backgroundImage}
         contentFit="cover"
       />
-      <LanguageSwipe
-        enabled={phase === 'idle'}
-        onSwipe={handleSwitchLanguage}
-        style={styles.swipeArea}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.header}>
-            <Image source={AppImages.splashIcon} style={styles.headerIcon} />
-            <ThemedText type="subtitle">もじガチャ</ThemedText>
-            <Pressable
-              onPress={toggleSound}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={soundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
-              style={({ pressed }) => [styles.soundToggle, pressed && styles.spinButtonPressed]}>
-              <ThemedText style={styles.soundToggleIcon}>{soundEnabled ? '🔊' : '🔇'}</ThemedText>
-            </Pressable>
-          </View>
-          <LanguageSwitcher
-            language={language}
-            onSwitch={handleSwitchLanguage}
-            disabled={phase !== 'idle'}
-          />
-          <View style={styles.statusRow}>
-            <ThemedText type="small" themeColor="textSecondary">
-              これまでに {totalDraws} 回まわしました
-            </ThemedText>
-            {streakDays >= 2 && (
-              <View style={styles.streakChip}>
-                <ThemedText type="smallBold" style={styles.streakChipText}>
-                  🔥 {streakDays}日連続
-                </ThemedText>
-              </View>
-            )}
-          </View>
-          <Animated.View key={language.id} entering={languageEntering} style={styles.languageBlock}>
-            <View style={styles.statusRow}>
-              <View style={styles.luckyChip}>
-                <ThemedText type="smallBold" style={styles.luckyChipText}>
-                  ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
-                </ThemedText>
-              </View>
-              <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.ratesLink}>
-                  排出率
-                </ThemedText>
-              </Pressable>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <Image source={AppImages.splashIcon} style={styles.headerIcon} />
+          <ThemedText type="subtitle">もじガチャ</ThemedText>
+          <Pressable
+            onPress={toggleSound}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={soundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
+            style={({ pressed }) => [styles.soundToggle, pressed && styles.spinButtonPressed]}>
+            <ThemedText style={styles.soundToggleIcon}>{soundEnabled ? '🔊' : '🔇'}</ThemedText>
+          </Pressable>
+        </View>
+        <LanguageSwitcher
+          language={language}
+          onSwitch={handleSwitchLanguage}
+          disabled={phase !== 'idle'}
+        />
+        <View style={styles.statusRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            これまでに {totalDraws} 回まわしました
+          </ThemedText>
+          {streakDays >= 2 && (
+            <View style={styles.streakChip}>
+              <ThemedText type="smallBold" style={styles.streakChipText}>
+                🔥 {streakDays}日連続
+              </ThemedText>
             </View>
-
-            <Pressable
-              onPress={() => router.push('/collection')}
-              style={({ pressed }) => [pressed && styles.progressChipPressed]}>
-              <ThemedView type="backgroundElement" style={styles.progressChip}>
-                <ThemedText type="smallBold">
-                  ずかん {obtainedCount} / {sheetSlotCount}
-                </ThemedText>
-                <View style={styles.progressChipTrack}>
-                  <View style={[styles.progressChipFill, { width: `${progress * 100}%` }]} />
-                </View>
-                <ThemedText type="small" themeColor="textSecondary">
-                  あつめた
-                </ThemedText>
-              </ThemedView>
+          )}
+        </View>
+        <Animated.View key={language.id} entering={languageEntering} style={styles.languageBlock}>
+          <View style={styles.statusRow}>
+            <View style={styles.luckyChip}>
+              <ThemedText type="smallBold" style={styles.luckyChipText}>
+                ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
+              </ThemedText>
+            </View>
+            <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.ratesLink}>
+                排出率
+              </ThemedText>
             </Pressable>
-          </Animated.View>
-
-          <View style={styles.machineArea}>
-            <GachaMachine spinning={phase === 'spinning'} onPress={phase === 'idle' ? spin : undefined} />
           </View>
 
-          <SpinButton
-            label={phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
-            disabled={phase !== 'idle'}
-            onPress={spin}
-          />
-        </SafeAreaView>
-      </LanguageSwipe>
+          <Pressable
+            onPress={() => router.push('/collection')}
+            style={({ pressed }) => [pressed && styles.progressChipPressed]}>
+            <ThemedView type="backgroundElement" style={styles.progressChip}>
+              <ThemedText type="smallBold">
+                ずかん {obtainedCount} / {sheetSlotCount}
+              </ThemedText>
+              <View style={styles.progressChipTrack}>
+                <View style={[styles.progressChipFill, { width: `${progress * 100}%` }]} />
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                あつめた
+              </ThemedText>
+            </ThemedView>
+          </Pressable>
+        </Animated.View>
+
+        <View style={styles.machineArea}>
+          <GestureDetector gesture={machinePan}>
+            <Animated.View style={[styles.machineWrap, machineStyle]} collapsable={false}>
+              <GachaMachine
+                spinning={phase === 'spinning'}
+                onPress={phase === 'idle' ? spinFromMachine : undefined}
+              />
+              <View style={styles.machinePlate}>
+                <ThemedText type="smallBold" style={styles.machinePlateText}>
+                  {language.flag} {language.label}ガチャ
+                </ThemedText>
+              </View>
+            </Animated.View>
+          </GestureDetector>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.swipeHint}>
+            ← マシンを横にスワイプで言語チェンジ →
+          </ThemedText>
+        </View>
+
+        <SpinButton
+          label={phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
+          disabled={phase !== 'idle'}
+          onPress={spin}
+        />
+      </SafeAreaView>
 
       {overlayVisible && (
         <Animated.View entering={FadeIn.duration(200)} style={styles.overlay}>
@@ -419,11 +489,6 @@ const styles = StyleSheet.create({
     opacity: 0.56,
     pointerEvents: 'none',
   },
-  swipeArea: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
   safeArea: {
     flex: 1,
     alignItems: 'center',
@@ -512,7 +577,25 @@ const styles = StyleSheet.create({
   },
   machineArea: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  machineWrap: {
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  machinePlate: {
+    backgroundColor: Accent.primary,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.half,
+  },
+  machinePlateText: {
+    color: Accent.onPrimary,
+  },
+  swipeHint: {
+    textAlign: 'center',
   },
   spinButtonBase: {
     alignSelf: 'stretch',
