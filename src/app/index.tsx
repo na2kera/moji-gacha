@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
 import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
+import { RatesModal } from '@/components/gacha/rates-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppImages, GachaImages } from '@/constants/assets';
@@ -15,8 +16,11 @@ import { japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
+import { applyLuckyBoost, getLuckyCharacter, localDateKey, LUCKY_WEIGHT_MULTIPLIER } from '@/lib/lucky';
 import { shareGeneric, shareToX } from '@/lib/share';
+import { sounds } from '@/lib/sounds';
 import { useCollectionStore } from '@/store/collection';
+import { useSettingsStore } from '@/store/settings';
 
 type Phase = 'idle' | 'spinning' | 'rolling' | 'opening' | 'result';
 
@@ -30,24 +34,32 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export default function GachaScreen() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<DrawResult | null>(null);
+  const [ratesVisible, setRatesVisible] = useState(false);
   const busyRef = useRef(false);
   const colorScheme = useColorScheme();
   const backgroundImage = GachaImages.background[colorScheme === 'dark' ? 'dark' : 'light'];
 
   const recordDraw = useCollectionStore((state) => state.recordDraw);
   const totalDraws = useCollectionStore((state) => state.totalDraws);
+  const streakDays = useCollectionStore((state) => state.streakDays);
   const resultCount = useCollectionStore((state) =>
     result ? (state.entries[result.character.id]?.count ?? 0) : 0,
   );
+  const soundEnabled = useSettingsStore((state) => state.soundEnabled);
+  const toggleSound = useSettingsStore((state) => state.toggleSound);
+
+  // 毎日変わるラッキー文字。この文字 (色違い含む) は排出率アップ
+  const luckyCharacter = getLuckyCharacter(japanese.characters, localDateKey());
 
   const spin = async () => {
     if (busyRef.current) return;
     busyRef.current = true;
 
-    const character = drawCharacter(japanese.characters);
+    const character = drawCharacter(applyLuckyBoost(japanese.characters, luckyCharacter.baseId));
     // isNew は開封直前の recordDraw で確定させる。ここでは落下演出用に文字だけ保持する
     setResult({ character, isNew: false });
     setPhase('spinning');
+    sounds.spin();
 
     const tick = setInterval(() => haptics.selection(), 150);
     await delay(SPIN_DURATION);
@@ -56,12 +68,17 @@ export default function GachaScreen() {
     setPhase('rolling');
     await delay(ROLL_DURATION);
     haptics.heavy();
+    sounds.drop();
     await delay(WOBBLE_DURATION);
 
     const { isNew } = recordDraw(character.id);
     setResult({ character, isNew });
     setPhase('opening');
     haptics.success();
+    sounds.pop();
+    if (character.rarity === 'superRare') {
+      sounds.sparkle();
+    }
     await delay(OPEN_DURATION + 500);
 
     setPhase('result');
@@ -99,13 +116,42 @@ export default function GachaScreen() {
               {japanese.label}
             </ThemedText>
           </View>
+          <Pressable
+            onPress={toggleSound}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={soundEnabled ? '効果音をオフにする' : '効果音をオンにする'}
+            style={({ pressed }) => [styles.soundToggle, pressed && styles.spinButtonPressed]}>
+            <ThemedText style={styles.soundToggleIcon}>{soundEnabled ? '🔊' : '🔇'}</ThemedText>
+          </Pressable>
         </View>
-        <ThemedText type="small" themeColor="textSecondary">
-          これまでに {totalDraws} 回まわしました
-        </ThemedText>
+        <View style={styles.statusRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            これまでに {totalDraws} 回まわしました
+          </ThemedText>
+          {streakDays >= 2 && (
+            <View style={styles.streakChip}>
+              <ThemedText type="smallBold" style={styles.streakChipText}>
+                🔥 {streakDays}日連続
+              </ThemedText>
+            </View>
+          )}
+        </View>
+        <View style={styles.statusRow}>
+          <View style={styles.luckyChip}>
+            <ThemedText type="smallBold" style={styles.luckyChipText}>
+              ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
+            </ThemedText>
+          </View>
+          <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.ratesLink}>
+              排出率
+            </ThemedText>
+          </Pressable>
+        </View>
 
         <View style={styles.machineArea}>
-          <GachaMachine spinning={phase === 'spinning'} />
+          <GachaMachine spinning={phase === 'spinning'} onPress={phase === 'idle' ? spin : undefined} />
         </View>
 
         <Pressable
@@ -136,6 +182,13 @@ export default function GachaScreen() {
                 <View style={styles.newBadge}>
                   <ThemedText type="smallBold" style={styles.newBadgeText}>
                     NEW!
+                  </ThemedText>
+                </View>
+              )}
+              {result.character.baseId === luckyCharacter.baseId && (
+                <View style={styles.luckyBadge}>
+                  <ThemedText type="smallBold" style={styles.luckyBadgeText}>
+                    ✨ ラッキー文字ゲット!
                   </ThemedText>
                 </View>
               )}
@@ -206,6 +259,13 @@ export default function GachaScreen() {
           )}
         </Animated.View>
       )}
+
+      <RatesModal
+        visible={ratesVisible}
+        onClose={() => setRatesVisible(false)}
+        characters={japanese.characters}
+        luckyGlyph={luckyCharacter.glyph}
+      />
     </ThemedView>
   );
 }
@@ -247,6 +307,45 @@ const styles = StyleSheet.create({
   },
   languageBadgeText: {
     color: '#FFFFFF',
+  },
+  soundToggle: {
+    marginLeft: Spacing.one,
+  },
+  soundToggleIcon: {
+    fontSize: 20,
+    lineHeight: 28,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  streakChip: {
+    backgroundColor: '#FFF1E0',
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  streakChipText: {
+    color: '#C75A00',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  luckyChip: {
+    backgroundColor: '#FFF7D6',
+    borderColor: '#F5A80B',
+    borderWidth: 1,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  luckyChipText: {
+    color: '#B87E00',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  ratesLink: {
+    textDecorationLine: 'underline',
   },
   machineArea: {
     flex: 1,
@@ -297,6 +396,17 @@ const styles = StyleSheet.create({
   },
   newBadgeText: {
     color: '#FFFFFF',
+  },
+  luckyBadge: {
+    backgroundColor: '#FFF7D6',
+    borderColor: '#F5A80B',
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  luckyBadgeText: {
+    color: '#B87E00',
   },
   variantBadge: {
     borderRadius: Spacing.two,

@@ -50,9 +50,12 @@ export function CapsuleReveal({ character, stage }: Props) {
   const flash = useSharedValue(0);
   const shockwave = useSharedValue(0);
   const glyphShake = useSharedValue(0);
+  const confirmAura = useSharedValue(0);
 
   // 濁音・半濁音は「音が響く」イメージで揺れと衝撃波を加えた特別演出にする
   const hasSoundMark = character.soundMark != null;
+  // 超レアは開封前から金色に発光させる「確定演出」(ソシャゲガチャの定番)
+  const isSuperRare = character.rarity === 'superRare';
 
   useEffect(() => {
     if (stage === 'roll') {
@@ -60,6 +63,22 @@ export function CapsuleReveal({ character, stage }: Props) {
         duration: ROLL_DURATION,
         easing: Easing.out(Easing.cubic),
       });
+      if (isSuperRare) {
+        // カプセルが到着してから光り始め、開封まで脈動し続ける
+        confirmAura.value = withDelay(
+          ROLL_DURATION,
+          withSequence(
+            withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }),
+            withRepeat(
+              withSequence(
+                withTiming(0.55, { duration: 600, easing: Easing.inOut(Easing.sin) }),
+                withTiming(1, { duration: 600, easing: Easing.inOut(Easing.sin) }),
+              ),
+              -1,
+            ),
+          ),
+        );
+      }
       const wobbleAmp = hasSoundMark ? 13 : 7;
       wobble.value = withDelay(
         ROLL_DURATION,
@@ -73,6 +92,7 @@ export function CapsuleReveal({ character, stage }: Props) {
         ),
       );
     } else {
+      confirmAura.value = withTiming(0, { duration: 300 });
       wobble.value = withTiming(0, { duration: 80 });
       openProgress.value = withTiming(1, {
         duration: OPEN_DURATION,
@@ -108,7 +128,7 @@ export function CapsuleReveal({ character, stage }: Props) {
         );
       }
     }
-  }, [stage, hasSoundMark, rollX, wobble, openProgress, glyphScale, flash, shockwave, glyphShake]);
+  }, [stage, hasSoundMark, isSuperRare, rollX, wobble, openProgress, glyphScale, flash, shockwave, glyphShake, confirmAura]);
 
   const capsuleStyle = useAnimatedStyle(() => {
     // 移動距離に合わせて回転させ、床を転がってくる見た目にする
@@ -171,12 +191,25 @@ export function CapsuleReveal({ character, stage }: Props) {
     ],
   }));
 
+  const confirmAuraStyle = useAnimatedStyle(() => ({
+    opacity: confirmAura.value * 0.95,
+    transform: [{ scale: 0.8 + confirmAura.value * 0.35 }],
+  }));
+
   const glowColor = character.colorVariant?.glowColor ?? RarityColors[character.rarity];
   const glyphColor = character.colorVariant?.glyphColor ?? '#FFFFFF';
 
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.flash, flashStyle]} />
+      {isSuperRare && stage === 'roll' && (
+        <Animated.View style={[styles.confirmAura, confirmAuraStyle]} pointerEvents="none">
+          <Image
+            source={GachaImages.effects.superRareAura}
+            style={styles.confirmAuraImage}
+          />
+        </Animated.View>
+      )}
       {character.rarity === 'superRare' && stage === 'open' && (
         <Image
           source={GachaImages.effects.superRareAura}
@@ -269,6 +302,15 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     opacity: 0.9,
+  },
+  confirmAura: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmAuraImage: {
+    width: 280,
+    height: 280,
   },
   glyphWrapper: {
     position: 'absolute',

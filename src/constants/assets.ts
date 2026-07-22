@@ -26,6 +26,13 @@ export const GachaImages = {
   },
 } as const;
 
+export const SoundAssets = {
+  gachaSpin: require('@/assets/sounds/gacha-spin.wav'),
+  capsuleDrop: require('@/assets/sounds/capsule-drop.wav'),
+  capsulePop: require('@/assets/sounds/capsule-pop.wav'),
+  superRareSparkle: require('@/assets/sounds/super-rare-sparkle.wav'),
+} as const;
+
 export const TabIconImages = {
   gacha: require('@/assets/images/tabIcons/home.png'),
   collection: require('@/assets/images/tabIcons/explore.png'),
