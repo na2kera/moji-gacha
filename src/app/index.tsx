@@ -1,7 +1,18 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+  ZoomIn,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CapsuleReveal, OPEN_DURATION, ROLL_DURATION, WOBBLE_DURATION } from '@/components/gacha/capsule-reveal';
@@ -9,9 +20,9 @@ import { GachaMachine, SPIN_DURATION } from '@/components/gacha/gacha-machine';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppImages, GachaImages } from '@/constants/assets';
-import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { japanese } from '@/data/japanese';
+import { RarityCardBackgrounds, RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
+import { Accent, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { characterById, japanese } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { drawCharacter } from '@/lib/gacha';
 import { haptics } from '@/lib/haptics';
@@ -27,6 +38,74 @@ type DrawResult = {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** 図鑑(五十音表)のマス数。色違いは同じマスに入るので基本文字のみ数える */
+const SHEET_SLOT_COUNT = japanese.characters.filter((c) => c.id === c.baseId).length;
+
+/** 立体ボタンの「厚み」。押下時にこの分だけ沈む */
+const BUTTON_DEPTH = 6;
+
+/**
+ * Duolingo式の立体CTAボタン。下辺に濃色の厚みがあり、押すと沈む。
+ * 待機中はゆっくり脈動して「押して!」を伝える。
+ */
+function SpinButton({
+  label,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const pressed = useSharedValue(false);
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (disabled) {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(1, { duration: 150 });
+      return;
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.03, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+    );
+    return () => cancelAnimation(pulse);
+  }, [disabled, pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+  const faceStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: withTiming(pressed.value ? BUTTON_DEPTH : 0, { duration: 70 }) },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[styles.spinButtonBase, disabled && styles.spinButtonDisabled, pulseStyle]}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        onPressIn={() => {
+          pressed.value = true;
+        }}
+        onPressOut={() => {
+          pressed.value = false;
+        }}>
+        <Animated.View style={[styles.spinButtonFace, faceStyle]}>
+          <ThemedText type="subtitle" style={styles.spinButtonText}>
+            {label}
+          </ThemedText>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function GachaScreen() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<DrawResult | null>(null);
@@ -36,6 +115,16 @@ export default function GachaScreen() {
 
   const recordDraw = useCollectionStore((state) => state.recordDraw);
   const totalDraws = useCollectionStore((state) => state.totalDraws);
+  // 図鑑のマス単位の進捗。色違いは基本文字と同じマスとして数える
+  const obtainedCount = useCollectionStore((state) => {
+    const ownedBaseIds = new Set<string>();
+    for (const id of Object.keys(state.entries)) {
+      const character = characterById.get(id);
+      if (character) ownedBaseIds.add(character.baseId);
+    }
+    return ownedBaseIds.size;
+  });
+  const progress = SHEET_SLOT_COUNT === 0 ? 0 : obtainedCount / SHEET_SLOT_COUNT;
   const resultCount = useCollectionStore((state) =>
     result ? (state.entries[result.character.id]?.count ?? 0) : 0,
   );
@@ -104,22 +193,31 @@ export default function GachaScreen() {
           これまでに {totalDraws} 回まわしました
         </ThemedText>
 
+        <Pressable
+          onPress={() => router.push('/collection')}
+          style={({ pressed }) => [pressed && styles.progressChipPressed]}>
+          <ThemedView type="backgroundElement" style={styles.progressChip}>
+            <ThemedText type="smallBold">
+              ずかん {obtainedCount} / {SHEET_SLOT_COUNT}
+            </ThemedText>
+            <View style={styles.progressChipTrack}>
+              <View style={[styles.progressChipFill, { width: `${progress * 100}%` }]} />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              あつめた
+            </ThemedText>
+          </ThemedView>
+        </Pressable>
+
         <View style={styles.machineArea}>
           <GachaMachine spinning={phase === 'spinning'} />
         </View>
 
-        <Pressable
-          onPress={spin}
+        <SpinButton
+          label={phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
           disabled={phase !== 'idle'}
-          style={({ pressed }) => [
-            styles.spinButton,
-            phase !== 'idle' && styles.spinButtonDisabled,
-            pressed && styles.spinButtonPressed,
-          ]}>
-          <ThemedText type="subtitle" style={styles.spinButtonText}>
-            {phase === 'spinning' ? 'まわしています…' : 'ガチャをまわす'}
-          </ThemedText>
-        </Pressable>
+          onPress={spin}
+        />
       </SafeAreaView>
 
       {overlayVisible && (
@@ -131,7 +229,16 @@ export default function GachaScreen() {
             />
           )}
           {phase === 'result' && result && (
-            <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.resultCard}>
+            <Animated.View
+              entering={ZoomIn.springify().damping(12)}
+              style={[
+                styles.resultCard,
+                {
+                  backgroundColor: RarityCardBackgrounds[result.character.rarity],
+                  borderColor: RarityColors[result.character.rarity],
+                },
+                result.character.rarity === 'superRare' && styles.resultCardSuperRare,
+              ]}>
               {result.isNew && (
                 <View style={styles.newBadge}>
                   <ThemedText type="smallBold" style={styles.newBadgeText}>
@@ -240,24 +347,52 @@ const styles = StyleSheet.create({
     width: 44,
   },
   languageBadge: {
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.half,
   },
   languageBadgeText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
+  },
+  progressChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+  },
+  progressChipPressed: {
+    opacity: 0.7,
+  },
+  progressChipTrack: {
+    width: 72,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(96, 100, 108, 0.25)',
+    overflow: 'hidden',
+  },
+  progressChipFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: Accent.primary,
   },
   machineArea: {
     flex: 1,
     justifyContent: 'center',
   },
-  spinButton: {
+  spinButtonBase: {
     alignSelf: 'stretch',
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primaryDark,
+    borderRadius: Spacing.four,
+  },
+  spinButtonFace: {
+    backgroundColor: Accent.primary,
     borderRadius: Spacing.four,
     paddingVertical: Spacing.three,
     alignItems: 'center',
+    marginBottom: BUTTON_DEPTH,
   },
   spinButtonDisabled: {
     opacity: 0.5,
@@ -266,7 +401,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   spinButtonText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
     fontSize: 20,
     lineHeight: 28,
   },
@@ -285,18 +420,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     backgroundColor: '#FFFFFF',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
     borderRadius: Spacing.four,
     paddingHorizontal: Spacing.six,
     paddingVertical: Spacing.four,
   },
+  resultCardSuperRare: {
+    borderWidth: 4,
+    shadowColor: RarityColors.superRare,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 24,
+    elevation: 16,
+  },
   newBadge: {
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
   },
   newBadgeText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
   },
   variantBadge: {
     borderRadius: Spacing.two,
@@ -326,10 +471,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   shareButtonX: {
-    backgroundColor: '#000000',
+    backgroundColor: Accent.xBrand,
   },
   shareButtonXText: {
-    color: '#FFFFFF',
+    color: Accent.onXBrand,
   },
   resultButtons: {
     flexDirection: 'row',
@@ -349,7 +494,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     minHeight: 44,
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

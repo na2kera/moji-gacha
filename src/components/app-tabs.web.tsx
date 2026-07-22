@@ -15,7 +15,7 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { TabIconImages } from '@/constants/assets';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
@@ -42,20 +42,20 @@ type TabButtonProps = TabTriggerSlotProps & {
 export function TabButton({ children, icon, isFocused, ...props }: TabButtonProps) {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-  const tintColor = isFocused ? colors.text : colors.textSecondary;
+  const tintColor = isFocused ? Accent.primary : colors.textSecondary;
 
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
+        style={[styles.tabButtonView, isFocused && styles.tabButtonViewFocused]}>
         <Image
           source={icon}
           style={styles.tabIcon}
           tintColor={tintColor}
           contentFit="contain"
         />
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        <ThemedText type="small" style={{ color: tintColor }}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -123,6 +123,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
+  },
+  tabButtonViewFocused: {
+    backgroundColor: Accent.soft,
   },
   tabIcon: {
     width: 16,
