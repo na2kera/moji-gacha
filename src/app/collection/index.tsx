@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CompleteCertificate } from '@/components/collection/complete-certificate';
+import { Confetti } from '@/components/gacha/confetti';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
@@ -14,7 +18,12 @@ import {
   variantsByBaseId,
 } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
+import { haptics } from '@/lib/haptics';
+import { sounds } from '@/lib/sounds';
 import { useCollectionStore } from '@/store/collection';
+
+/** 図鑑進捗の節目 (%)。到達するとその場でお祝いする */
+const MILESTONES = [25, 50, 75, 100] as const;
 
 function SheetCell({ character }: { character: GachaCharacter | null }) {
   const entries = useCollectionStore((state) => state.entries);
@@ -103,8 +112,49 @@ export default function CollectionScreen() {
     (state) => japanese.characters.filter((c) => state.entries[c.id]).length,
   );
   const totalDraws = useCollectionStore((state) => state.totalDraws);
+  const celebratedMilestone = useCollectionStore((state) => state.celebratedMilestone);
+  const setCelebratedMilestone = useCollectionStore((state) => state.setCelebratedMilestone);
+  const completedAt = useCollectionStore((state) => {
+    // 全文字が揃っている場合のみ、最後の1文字を獲得した日 (=コンプリート日) を返す
+    let latest: string | null = null;
+    for (const c of japanese.characters) {
+      const obtained = state.entries[c.id]?.firstObtainedAt;
+      if (!obtained) return null;
+      if (latest == null || obtained > latest) latest = obtained;
+    }
+    return latest;
+  });
   const totalCount = japanese.characters.length;
   const progress = totalCount === 0 ? 0 : obtainedCount / totalCount;
+  const isComplete = totalCount > 0 && obtainedCount === totalCount;
+
+  const [celebration, setCelebration] = useState<number | null>(null);
+  const [certificateVisible, setCertificateVisible] = useState(false);
+
+  // 未演出のマイルストーンに到達していたら、その場でお祝いする
+  const progressPercent = progress * 100;
+  const reachedMilestone = MILESTONES.filter((m) => progressPercent >= m).at(-1) ?? 0;
+
+  useEffect(() => {
+    if (reachedMilestone <= celebratedMilestone) return;
+    setCelebratedMilestone(reachedMilestone);
+    // 画面表示が落ち着いてから演出を始める
+    const showTimer = setTimeout(() => {
+      haptics.success();
+      sounds.sparkle();
+      if (reachedMilestone === 100) {
+        // コンプリートは賞状で盛大に
+        setCertificateVisible(true);
+      } else {
+        setCelebration(reachedMilestone);
+      }
+    }, 350);
+    const hideTimer = setTimeout(() => setCelebration(null), 3000);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
+  }, [reachedMilestone, celebratedMilestone, setCelebratedMilestone]);
 
   return (
     <ThemedView style={styles.container}>
@@ -132,7 +182,27 @@ export default function CollectionScreen() {
           </View>
           <ThemedView type="backgroundElement" style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            {MILESTONES.filter((m) => m < 100).map((m) => (
+              <View
+                key={m}
+                style={[
+                  styles.milestoneTick,
+                  { left: `${m}%` },
+                  progressPercent >= m && styles.milestoneTickReached,
+                ]}
+              />
+            ))}
           </ThemedView>
+
+          {isComplete && (
+            <Pressable
+              onPress={() => setCertificateVisible(true)}
+              style={({ pressed }) => [styles.certificateButton, pressed && styles.cellPressed]}>
+              <ThemedText type="smallBold" style={styles.certificateButtonText}>
+                🏆 コンプリートしょうじょうをみる
+              </ThemedText>
+            </Pressable>
+          )}
 
           {sheetSections.map((section) => (
             <View key={section.title} style={styles.section}>
@@ -170,6 +240,31 @@ export default function CollectionScreen() {
           ))}
         </ScrollView>
       </SafeAreaView>
+
+      {celebration != null && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(300)}
+          pointerEvents="none"
+          style={styles.celebrationOverlay}>
+          <Confetti />
+          <Animated.View entering={ZoomIn.springify().damping(12)} style={styles.celebrationCard}>
+            <ThemedText style={styles.celebrationEmoji}>🎉</ThemedText>
+            <ThemedText type="subtitle" style={styles.celebrationText}>
+              {celebration}% たっせい!
+            </ThemedText>
+          </Animated.View>
+        </Animated.View>
+      )}
+
+      <CompleteCertificate
+        visible={certificateVisible}
+        onClose={() => setCertificateVisible(false)}
+        setLabel={japanese.label}
+        totalCount={totalCount}
+        totalDraws={totalDraws}
+        completedAt={completedAt}
+      />
     </ThemedView>
   );
 }
@@ -227,6 +322,48 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: Fonts.rounded,
+  },
+  milestoneTick: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    marginLeft: -1,
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+  },
+  milestoneTickReached: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+  },
+  certificateButton: {
+    borderRadius: Spacing.three,
+    minHeight: 44,
+    backgroundColor: RarityColors.superRare,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  certificateButtonText: {
+    color: '#FFFFFF',
+  },
+  celebrationOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 10, 20, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  celebrationCard: {
+    alignItems: 'center',
+    gap: Spacing.one,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Spacing.four,
+    paddingHorizontal: Spacing.five,
+    paddingVertical: Spacing.four,
+  },
+  celebrationEmoji: {
+    fontSize: 44,
+    lineHeight: 52,
+  },
+  celebrationText: {
+    color: '#B87E00',
   },
   sheet: {
     gap: Spacing.two,
