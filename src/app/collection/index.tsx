@@ -1,23 +1,20 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, ZoomIn } from 'react-native-reanimated';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompleteCertificate } from '@/components/collection/complete-certificate';
 import { Confetti } from '@/components/gacha/confetti';
+import { LanguageSwipe } from '@/components/language-swipe';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
 import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
-import {
-  characterById,
-  japanese,
-  sheetRowLabels,
-  sheetSections,
-  variantsByBaseId,
-} from '@/data/japanese';
+import { characterById, variantsByBaseId } from '@/data/languages';
 import type { GachaCharacter } from '@/data/types';
+import { useLanguage, type SwitchDirection } from '@/hooks/use-language';
 import { haptics } from '@/lib/haptics';
 import { sounds } from '@/lib/sounds';
 import { useCollectionStore } from '@/store/collection';
@@ -108,28 +105,51 @@ function SheetCell({ character }: { character: GachaCharacter | null }) {
 }
 
 export default function CollectionScreen() {
+  const { language, switchLanguage } = useLanguage();
+  // 最後に切り替えた方向。スライド演出の向きに使う (null = まだ切り替えていない)
+  const [switchDirection, setSwitchDirection] = useState<SwitchDirection | null>(null);
+
   const obtainedCount = useCollectionStore(
-    (state) => japanese.characters.filter((c) => state.entries[c.id]).length,
+    (state) => language.characters.filter((c) => state.entries[c.id]).length,
   );
-  const totalDraws = useCollectionStore((state) => state.totalDraws);
-  const celebratedMilestone = useCollectionStore((state) => state.celebratedMilestone);
+  // この言語でまわした回数 (獲得数の合計)
+  const languageDraws = useCollectionStore((state) =>
+    language.characters.reduce((sum, c) => sum + (state.entries[c.id]?.count ?? 0), 0),
+  );
+  const celebratedMilestone = useCollectionStore(
+    (state) => state.celebratedMilestones[language.id] ?? 0,
+  );
   const setCelebratedMilestone = useCollectionStore((state) => state.setCelebratedMilestone);
   const completedAt = useCollectionStore((state) => {
     // 全文字が揃っている場合のみ、最後の1文字を獲得した日 (=コンプリート日) を返す
     let latest: string | null = null;
-    for (const c of japanese.characters) {
+    for (const c of language.characters) {
       const obtained = state.entries[c.id]?.firstObtainedAt;
       if (!obtained) return null;
       if (latest == null || obtained > latest) latest = obtained;
     }
     return latest;
   });
-  const totalCount = japanese.characters.length;
+  const totalCount = language.characters.length;
   const progress = totalCount === 0 ? 0 : obtainedCount / totalCount;
   const isComplete = totalCount > 0 && obtainedCount === totalCount;
 
   const [celebration, setCelebration] = useState<number | null>(null);
   const [certificateVisible, setCertificateVisible] = useState(false);
+
+  const handleSwitchLanguage = (direction: SwitchDirection) => {
+    haptics.selection();
+    setSwitchDirection(direction);
+    switchLanguage(direction);
+  };
+
+  // 言語が切り替わったら、進行中の演出は打ち切る (レンダー中の状態調整パターン)
+  const [prevLanguageId, setPrevLanguageId] = useState(language.id);
+  if (prevLanguageId !== language.id) {
+    setPrevLanguageId(language.id);
+    setCelebration(null);
+    setCertificateVisible(false);
+  }
 
   // 未演出のマイルストーンに到達していたら、その場でお祝いする
   const progressPercent = progress * 100;
@@ -137,7 +157,7 @@ export default function CollectionScreen() {
 
   useEffect(() => {
     if (reachedMilestone <= celebratedMilestone) return;
-    setCelebratedMilestone(reachedMilestone);
+    setCelebratedMilestone(language.id, reachedMilestone);
     // 画面表示が落ち着いてから演出を始める
     const showTimer = setTimeout(() => {
       haptics.success();
@@ -154,92 +174,114 @@ export default function CollectionScreen() {
       clearTimeout(showTimer);
       clearTimeout(hideTimer);
     };
-  }, [reachedMilestone, celebratedMilestone, setCelebratedMilestone]);
+  }, [reachedMilestone, celebratedMilestone, setCelebratedMilestone, language.id]);
+
+  // 行ラベル (あ行/か行…) を持つ言語だけラベル列を出す
+  const hasRowLabels = language.sheetRowLabels.some((label) => label != null);
+
+  // 切り替え方向に合わせてシートをスライドイン (初回表示は演出なし)
+  const languageEntering =
+    switchDirection == null
+      ? undefined
+      : switchDirection === 1
+        ? SlideInRight.springify().damping(18)
+        : SlideInLeft.springify().damping(18);
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <ThemedText type="subtitle">コレクション</ThemedText>
-            <View style={styles.languageBadge}>
-              <ThemedText type="smallBold" style={styles.languageBadgeText}>
-                {japanese.label}
-              </ThemedText>
+      <LanguageSwipe onSwipe={handleSwitchLanguage} style={styles.swipeArea}>
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.header}>
+              <ThemedText type="subtitle">コレクション</ThemedText>
+              <LanguageSwitcher language={language} onSwitch={handleSwitchLanguage} />
             </View>
-          </View>
 
-          <View style={styles.progressRow}>
-            <ThemedText type="smallBold">
-              {obtainedCount} / {totalCount}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              累計 {totalDraws} 回
-            </ThemedText>
-          </View>
-          <ThemedView type="backgroundElement" style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-            {MILESTONES.filter((m) => m < 100).map((m) => (
-              <View
-                key={m}
-                style={[
-                  styles.milestoneTick,
-                  { left: `${m}%` },
-                  progressPercent >= m && styles.milestoneTickReached,
-                ]}
-              />
-            ))}
-          </ThemedView>
-
-          {isComplete && (
-            <Pressable
-              onPress={() => setCertificateVisible(true)}
-              style={({ pressed }) => [styles.certificateButton, pressed && styles.cellPressed]}>
-              <ThemedText type="smallBold" style={styles.certificateButtonText}>
-                🏆 コンプリートしょうじょうをみる
-              </ThemedText>
-            </Pressable>
-          )}
-
-          {sheetSections.map((section) => (
-            <View key={section.title} style={styles.section}>
-              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-                {section.title}
-              </ThemedText>
-              <View style={styles.sheet}>
-                {japanese.sheetRows
-                  .slice(section.firstRow, section.firstRow + section.rowCount)
-                  .map((row, index) => {
-                    const rowIndex = section.firstRow + index;
-                    return (
-                      <View key={rowIndex} style={styles.row}>
-                        <View style={styles.rowLabel}>
-                          <ThemedText
-                            type="small"
-                            themeColor="textSecondary"
-                            style={styles.rowLabelText}>
-                            {sheetRowLabels[rowIndex]}
-                          </ThemedText>
-                        </View>
-                        {row.map((characterId, cellIndex) => (
-                          <SheetCell
-                            key={cellIndex}
-                            character={
-                              characterId ? (characterById.get(characterId) ?? null) : null
-                            }
-                          />
-                        ))}
-                      </View>
-                    );
-                  })}
+            <Animated.View
+              key={language.id}
+              entering={languageEntering}
+              style={styles.languageBlock}>
+              <View style={styles.progressRow}>
+                <ThemedText type="smallBold">
+                  {obtainedCount} / {totalCount}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  累計 {languageDraws} 回
+                </ThemedText>
               </View>
-            </View>
-          ))}
-        </ScrollView>
-      </SafeAreaView>
+              <ThemedView type="backgroundElement" style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                {MILESTONES.filter((m) => m < 100).map((m) => (
+                  <View
+                    key={m}
+                    style={[
+                      styles.milestoneTick,
+                      { left: `${m}%` },
+                      progressPercent >= m && styles.milestoneTickReached,
+                    ]}
+                  />
+                ))}
+              </ThemedView>
+
+              {isComplete && (
+                <Pressable
+                  onPress={() => setCertificateVisible(true)}
+                  style={({ pressed }) => [
+                    styles.certificateButton,
+                    pressed && styles.cellPressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={styles.certificateButtonText}>
+                    🏆 コンプリートしょうじょうをみる
+                  </ThemedText>
+                </Pressable>
+              )}
+
+              {language.sheetSections.map((section) => (
+                <View key={section.title} style={styles.section}>
+                  <ThemedText
+                    type="smallBold"
+                    themeColor="textSecondary"
+                    style={styles.sectionTitle}>
+                    {section.title}
+                  </ThemedText>
+                  <View style={styles.sheet}>
+                    {language.sheetRows
+                      .slice(section.firstRow, section.firstRow + section.rowCount)
+                      .map((row, index) => {
+                        const rowIndex = section.firstRow + index;
+                        return (
+                          <View key={rowIndex} style={styles.row}>
+                            {hasRowLabels && (
+                              <View style={styles.rowLabel}>
+                                <ThemedText
+                                  type="small"
+                                  themeColor="textSecondary"
+                                  style={styles.rowLabelText}>
+                                  {language.sheetRowLabels[rowIndex]}
+                                </ThemedText>
+                              </View>
+                            )}
+                            {row.map((characterId, cellIndex) => (
+                              <SheetCell
+                                key={cellIndex}
+                                character={
+                                  characterId ? (characterById.get(characterId) ?? null) : null
+                                }
+                              />
+                            ))}
+                          </View>
+                        );
+                      })}
+                  </View>
+                </View>
+              ))}
+            </Animated.View>
+          </ScrollView>
+        </SafeAreaView>
+      </LanguageSwipe>
 
       {celebration != null && (
         <Animated.View
@@ -260,9 +302,9 @@ export default function CollectionScreen() {
       <CompleteCertificate
         visible={certificateVisible}
         onClose={() => setCertificateVisible(false)}
-        setLabel={japanese.label}
+        setLabel={language.label}
         totalCount={totalCount}
-        totalDraws={totalDraws}
+        totalDraws={languageDraws}
         completedAt={completedAt}
       />
     </ThemedView>
@@ -271,6 +313,11 @@ export default function CollectionScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  swipeArea: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -284,7 +331,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    // web はタブバーが画面上部に浮いているため、ヘッダーがその下に隠れないよう余白を広げる
+    paddingTop: Platform.select({ web: 80 }) ?? Spacing.four,
     paddingBottom: BottomTabInset + Spacing.four,
     gap: Spacing.three,
   },
@@ -293,14 +341,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  languageBadge: {
-    backgroundColor: Accent.primary,
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.half,
-  },
-  languageBadgeText: {
-    color: Accent.onPrimary,
+  languageBlock: {
+    gap: Spacing.three,
   },
   progressRow: {
     flexDirection: 'row',

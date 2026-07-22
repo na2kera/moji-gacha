@@ -18,20 +18,22 @@ import { ThemedView } from '@/components/themed-view';
 import { GachaImages } from '@/constants/assets';
 import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
 import { Fonts, Spacing } from '@/constants/theme';
-import { japanese, sheetRowLabels } from '@/data/japanese';
+import { languageOfCharacter } from '@/data/languages';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 
 const SPARKLE_COUNT = 10;
 
-/** 五十音表での通し番号と行ラベル。図鑑の採番として表示する */
-function sheetPositionOf(baseId: string): { no: number; rowLabel: string } | undefined {
+/** その言語の文字表での通し番号と行ラベル。図鑑の採番として表示する */
+function sheetPositionOf(baseId: string): { no: number; rowLabel: string | null } | undefined {
+  const language = languageOfCharacter.get(baseId);
+  if (!language) return undefined;
   let no = 0;
-  for (let rowIndex = 0; rowIndex < japanese.sheetRows.length; rowIndex++) {
-    for (const cellId of japanese.sheetRows[rowIndex]) {
+  for (let rowIndex = 0; rowIndex < language.sheetRows.length; rowIndex++) {
+    for (const cellId of language.sheetRows[rowIndex]) {
       if (!cellId) continue;
       no += 1;
-      if (cellId === baseId) return { no, rowLabel: sheetRowLabels[rowIndex] };
+      if (cellId === baseId) return { no, rowLabel: language.sheetRowLabels[rowIndex] };
     }
   }
   return undefined;
@@ -172,7 +174,7 @@ export function CharacterHero({ character }: Props) {
         <ThemedText style={styles.cardNo}>
           No.{String(position?.no ?? 0).padStart(2, '0')}
         </ThemedText>
-        {position && (
+        {position?.rowLabel != null && (
           <ThemedText themeColor="textSecondary" style={styles.rowLabel}>
             {position.rowLabel}
           </ThemedText>
