@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
-import { Spacing } from '@/constants/theme';
+import { Accent, Spacing } from '@/constants/theme';
 import type { GachaCharacter, Rarity } from '@/data/types';
 import { LUCKY_WEIGHT_MULTIPLIER } from '@/lib/lucky';
 
@@ -123,11 +123,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
     borderRadius: Spacing.three,
     minHeight: 44,
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeButtonText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
   },
 });

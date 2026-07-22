@@ -15,7 +15,7 @@ import { CharacterHero } from '@/components/collection/character-hero';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
-import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
@@ -406,30 +406,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   shareButtonX: {
-    backgroundColor: '#000000',
+    backgroundColor: Accent.xBrand,
   },
   shareButtonXText: {
-    color: '#FFFFFF',
+    color: Accent.onXBrand,
   },
   shareButtonGeneric: {
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
   },
   shareButtonGenericText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
   },
   stamp: {
     width: 46,
     height: 46,
     borderRadius: 23,
     borderWidth: 2.5,
-    borderColor: '#E5484D',
+    borderColor: Accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
     transform: [{ rotate: '-12deg' }],
     opacity: 0.9,
   },
   stampText: {
-    color: '#E5484D',
+    color: Accent.primary,
     fontFamily: Fonts.rounded,
     fontSize: 11,
     lineHeight: 15,

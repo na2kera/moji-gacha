@@ -9,8 +9,14 @@ import { Confetti } from '@/components/gacha/confetti';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { RarityColors } from '@/constants/rarity';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { characterById, japanese, variantsByBaseId } from '@/data/japanese';
+import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import {
+  characterById,
+  japanese,
+  sheetRowLabels,
+  sheetSections,
+  variantsByBaseId,
+} from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 import { sounds } from '@/lib/sounds';
@@ -198,18 +204,40 @@ export default function CollectionScreen() {
             </Pressable>
           )}
 
-          <View style={styles.sheet}>
-            {japanese.sheetRows.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.row}>
-                {row.map((characterId, cellIndex) => (
-                  <SheetCell
-                    key={cellIndex}
-                    character={characterId ? (characterById.get(characterId) ?? null) : null}
-                  />
-                ))}
+          {sheetSections.map((section) => (
+            <View key={section.title} style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+                {section.title}
+              </ThemedText>
+              <View style={styles.sheet}>
+                {japanese.sheetRows
+                  .slice(section.firstRow, section.firstRow + section.rowCount)
+                  .map((row, index) => {
+                    const rowIndex = section.firstRow + index;
+                    return (
+                      <View key={rowIndex} style={styles.row}>
+                        <View style={styles.rowLabel}>
+                          <ThemedText
+                            type="small"
+                            themeColor="textSecondary"
+                            style={styles.rowLabelText}>
+                            {sheetRowLabels[rowIndex]}
+                          </ThemedText>
+                        </View>
+                        {row.map((characterId, cellIndex) => (
+                          <SheetCell
+                            key={cellIndex}
+                            character={
+                              characterId ? (characterById.get(characterId) ?? null) : null
+                            }
+                          />
+                        ))}
+                      </View>
+                    );
+                  })}
               </View>
-            ))}
-          </View>
+            </View>
+          ))}
         </ScrollView>
       </SafeAreaView>
 
@@ -266,13 +294,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   languageBadge: {
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
     borderRadius: Spacing.three,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.half,
   },
   languageBadgeText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
   },
   progressRow: {
     flexDirection: 'row',
@@ -287,7 +315,13 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 5,
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
+  },
+  section: {
+    gap: Spacing.two,
+  },
+  sectionTitle: {
+    fontFamily: Fonts.rounded,
   },
   milestoneTick: {
     position: 'absolute',
@@ -303,7 +337,7 @@ const styles = StyleSheet.create({
   certificateButton: {
     borderRadius: Spacing.three,
     minHeight: 44,
-    backgroundColor: '#F5A80B',
+    backgroundColor: RarityColors.superRare,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -337,6 +371,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: Spacing.two,
+  },
+  rowLabel: {
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowLabelText: {
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   cell: {
     flex: 1,

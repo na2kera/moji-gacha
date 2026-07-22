@@ -5,10 +5,11 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Confetti } from '@/components/gacha/confetti';
 import { ThemedText } from '@/components/themed-text';
 import { AppImages } from '@/constants/assets';
-import { Fonts, Spacing } from '@/constants/theme';
+import { RarityColors } from '@/constants/rarity';
+import { Accent, Fonts, Spacing } from '@/constants/theme';
 import { shareCompleteGeneric, shareCompleteToX } from '@/lib/share';
 
-const GOLD = '#F5A80B';
+const GOLD = RarityColors.superRare;
 const GOLD_DARK = '#B87E00';
 
 type Props = {
@@ -154,16 +155,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonX: {
-    backgroundColor: '#000000',
+    backgroundColor: Accent.xBrand,
   },
   buttonShare: {
-    backgroundColor: '#E5484D',
+    backgroundColor: Accent.primary,
   },
   buttonClose: {
     backgroundColor: '#F0F0F3',
   },
   buttonLightText: {
-    color: '#FFFFFF',
+    color: Accent.onPrimary,
   },
   pressed: {
     opacity: 0.8,
