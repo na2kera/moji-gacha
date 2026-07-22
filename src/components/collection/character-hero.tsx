@@ -18,13 +18,11 @@ import { ThemedView } from '@/components/themed-view';
 import { GachaImages } from '@/constants/assets';
 import { RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
 import { Fonts, Spacing } from '@/constants/theme';
-import { japanese } from '@/data/japanese';
+import { japanese, sheetRowLabels } from '@/data/japanese';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 
 const SPARKLE_COUNT = 10;
-
-const ROW_LABELS = ['あ行', 'か行', 'さ行', 'た行', 'な行', 'は行', 'ま行', 'や行', 'ら行', 'わ行', 'ん'];
 
 /** 五十音表での通し番号と行ラベル。図鑑の採番として表示する */
 function sheetPositionOf(baseId: string): { no: number; rowLabel: string } | undefined {
@@ -33,7 +31,7 @@ function sheetPositionOf(baseId: string): { no: number; rowLabel: string } | und
     for (const cellId of japanese.sheetRows[rowIndex]) {
       if (!cellId) continue;
       no += 1;
-      if (cellId === baseId) return { no, rowLabel: ROW_LABELS[rowIndex] };
+      if (cellId === baseId) return { no, rowLabel: sheetRowLabels[rowIndex] };
     }
   }
   return undefined;

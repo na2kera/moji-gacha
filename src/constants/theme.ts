@@ -26,6 +26,21 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * アプリのアクセントカラー。赤系の直書き(#E5484D 等)はここに集約する。
+ */
+export const Accent = {
+  primary: '#E5484D',
+  /** 立体ボタンの下辺の「厚み」や押下時の沈み込みに使う濃色 */
+  primaryDark: '#B93940',
+  onPrimary: '#FFFFFF',
+  /** 選択インジケーターなど、面で使う薄いアクセント */
+  soft: 'rgba(229, 72, 77, 0.15)',
+  /** X (旧Twitter) のブランドカラー */
+  xBrand: '#000000',
+  onXBrand: '#FFFFFF',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

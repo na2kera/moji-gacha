@@ -2,7 +2,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { TabIconImages } from '@/constants/assets';
-import { Colors } from '@/constants/theme';
+import { Accent, Colors } from '@/constants/theme';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
@@ -11,8 +11,13 @@ export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      indicatorColor={Accent.soft}
+      tintColor={Accent.primary}
+      iconColor={{ default: colors.textSecondary, selected: Accent.primary }}
+      labelStyle={{
+        default: { color: colors.textSecondary },
+        selected: { color: Accent.primary },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>ガチャ</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

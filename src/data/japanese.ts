@@ -108,6 +108,26 @@ export const japanese: LanguageSet = {
   ),
 };
 
+/**
+ * sheetRows と同じ並びの行ラベル(あ行/か行…が行…)。
+ * 1文字だけの行(ん)はその文字自身をラベルにする。
+ */
+export const sheetRowLabels: string[] = FULL_SHEET.map((row) => {
+  const glyphs = [...row].filter((glyph) => glyph !== '　');
+  return glyphs.length > 1 ? `${glyphs[0]}行` : glyphs[0];
+});
+
+/** 五十音表のセクション区切り。firstRow は sheetRows のインデックス */
+export const sheetSections: { title: string; firstRow: number; rowCount: number }[] = [
+  { title: '清音', firstRow: 0, rowCount: SHEET.length },
+  { title: '濁音', firstRow: SHEET.length, rowCount: DAKUTEN_SHEET.length },
+  {
+    title: '半濁音',
+    firstRow: SHEET.length + DAKUTEN_SHEET.length,
+    rowCount: HANDAKUTEN_SHEET.length,
+  },
+];
+
 export const characterById = new Map(characters.map((c) => [c.id, c]));
 
 /** baseId → 色違いバリエーションの一覧 (基本文字自身は含まない) */
