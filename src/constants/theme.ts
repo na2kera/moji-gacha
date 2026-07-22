@@ -41,21 +41,29 @@ export const Accent = {
   onXBrand: '#FFFFFF',
 } as const;
 
+/**
+ * アプリ全体の手書き風フォント (Klee One)。
+ * 鉛筆で書いたような教科書体ベースの温かみのあるフォント。
+ * expo-font (useFonts) で読み込んだファミリー名を指す。
+ */
+export const HandwritingFont = {
+  regular: 'KleeOne_400Regular',
+  bold: 'KleeOne_600SemiBold',
+} as const;
+
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: HandwritingFont.regular,
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
+    rounded: HandwritingFont.bold,
     /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: HandwritingFont.regular,
     serif: 'serif',
-    rounded: 'normal',
+    rounded: HandwritingFont.bold,
     mono: 'monospace',
   },
   web: {

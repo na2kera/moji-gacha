@@ -18,6 +18,7 @@ import { Confetti } from './confetti';
 
 import { GachaImages } from '@/constants/assets';
 import { RarityColors } from '@/constants/rarity';
+import { Fonts } from '@/constants/theme';
 import type { GachaCharacter } from '@/data/types';
 
 /** カプセルが転がって登場する演出の長さ (ms) */
@@ -325,8 +326,9 @@ const styles = StyleSheet.create({
     opacity: 0.28,
   },
   glyph: {
+    fontFamily: Fonts.rounded,
     fontSize: 96,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#FFFFFF',
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 3 },

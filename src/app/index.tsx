@@ -29,7 +29,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { AppImages, GachaImages } from '@/constants/assets';
 import { RarityCardBackgrounds, RarityColors, RarityLabels, RarityStars } from '@/constants/rarity';
-import { Accent, BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import type { GachaCharacter } from '@/data/types';
 import { useLanguage, type SwitchDirection } from '@/hooks/use-language';
 import { drawCharacter } from '@/lib/gacha';
@@ -678,9 +678,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   resultGlyph: {
+    fontFamily: Fonts.rounded,
     fontSize: 84,
     lineHeight: 100,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#1A1A1A',
   },
   shareButtons: {

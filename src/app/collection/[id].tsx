@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   shareRow: {
     flexDirection: 'row',
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 11,
     lineHeight: 15,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   variantSection: {
     gap: Spacing.two,
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 12,
     lineHeight: 18,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   variantRow: {
     flexDirection: 'row',
@@ -495,8 +495,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.five,
   },
   lockedHeroGlyph: {
+    fontFamily: Fonts.rounded,
     fontSize: 72,
     lineHeight: 88,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

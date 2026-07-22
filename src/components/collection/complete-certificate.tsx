@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 22,
     lineHeight: 30,
-    fontWeight: '700',
+    fontWeight: '600',
     color: GOLD_DARK,
   },
   icon: {
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#4A3B18',
     marginTop: Spacing.one,
   },
