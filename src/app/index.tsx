@@ -347,6 +347,7 @@ export default function GachaScreen() {
             <Animated.View style={[styles.machineWrap, machineStyle]} collapsable={false}>
               <GachaMachine
                 spinning={phase === 'spinning'}
+                languageId={language.id}
                 onPress={phase === 'idle' ? spinFromMachine : undefined}
               />
               <View style={styles.machinePlate}>
