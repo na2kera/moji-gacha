@@ -1,11 +1,14 @@
-import { chinese } from './chinese';
+import { arabic } from './arabic';
 import { english } from './english';
+import { greek } from './greek';
+import { hindi } from './hindi';
 import { japanese } from './japanese';
 import { korean } from './korean';
+import { thai } from './thai';
 import type { GachaCharacter, LanguageSet } from './types';
 
 /** ガチャで遊べる言語一覧。横スワイプ・バッジタップでこの並び順に切り替わる */
-export const languages: LanguageSet[] = [japanese, english, chinese, korean];
+export const languages: LanguageSet[] = [japanese, english, korean, arabic, thai, hindi, greek];
 
 export const DEFAULT_LANGUAGE_ID = japanese.id;
 
