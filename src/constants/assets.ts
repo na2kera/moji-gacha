@@ -10,7 +10,15 @@ export const GachaImages = {
     dark: require('@/assets/images/gacha/gacha-bg-dark.png'),
   },
   machine: {
-    body: require('@/assets/images/gacha/gacha-machine-body.png'),
+    body: {
+      japanese: require('@/assets/images/gacha/gacha-machine-body-japanese.png'),
+      english: require('@/assets/images/gacha/gacha-machine-body-english.png'),
+      korean: require('@/assets/images/gacha/gacha-machine-body-korean.png'),
+      arabic: require('@/assets/images/gacha/gacha-machine-body-arabic.png'),
+      thai: require('@/assets/images/gacha/gacha-machine-body-thai.png'),
+      hindi: require('@/assets/images/gacha/gacha-machine-body-hindi.png'),
+      greek: require('@/assets/images/gacha/gacha-machine-body-greek.png'),
+    },
     handle: require('@/assets/images/gacha/gacha-machine-handle.png'),
   },
   capsule: {

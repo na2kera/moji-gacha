@@ -19,11 +19,14 @@ export const SPIN_DURATION = 1400;
 
 type Props = {
   spinning: boolean;
+  languageId: string;
   /** マシン本体タップでも回せるようにする (Pokémon GO 的な直接操作感) */
   onPress?: () => void;
 };
 
-export function GachaMachine({ spinning, onPress }: Props) {
+type MachineLanguageId = keyof typeof GachaImages.machine.body;
+
+export function GachaMachine({ spinning, languageId, onPress }: Props) {
   const handleRotation = useSharedValue(0);
   const shake = useSharedValue(0);
   const breathe = useSharedValue(1);
@@ -87,6 +90,9 @@ export function GachaMachine({ spinning, onPress }: Props) {
   const handleStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${handleRotation.value}deg` }],
   }));
+  const machineBody =
+    GachaImages.machine.body[languageId as MachineLanguageId] ??
+    GachaImages.machine.body.japanese;
 
   return (
     <Pressable
@@ -102,7 +108,7 @@ export function GachaMachine({ spinning, onPress }: Props) {
       accessibilityLabel="ガチャマシンをまわす">
       <Animated.View style={[styles.machine, machineStyle]}>
         <Image
-          source={GachaImages.machine.body}
+          source={machineBody}
           style={styles.machineBody}
         />
         <Animated.View style={[styles.handle, handleStyle]}>
