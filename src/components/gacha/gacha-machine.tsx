@@ -27,11 +27,15 @@ type MachineLanguageId = keyof typeof GachaImages.machine.body;
 
 export function GachaMachine({ spinning, languageId, onPress }: Props) {
   const handleRotation = useSharedValue(0);
+  const shake = useSharedValue(0);
   const breathe = useSharedValue(1);
   const pressScale = useSharedValue(1);
 
   useEffect(() => {
     if (!spinning) {
+      // 回転中の揺れが残っていたら中央に戻す
+      cancelAnimation(shake);
+      shake.value = withTiming(0, { duration: 120 });
       // 待機中: ゆっくり呼吸するように伸縮して「生きている」感を出す
       // (Duolingo のマスコット的な常時アニメ)
       breathe.value = withRepeat(
@@ -52,10 +56,23 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
       duration: SPIN_DURATION,
       easing: Easing.inOut(Easing.cubic),
     });
-  }, [spinning, handleRotation, breathe]);
+    // 回転中は小さく揺れて「動いている」感を出す。高速で大きく振ると
+    // ガタガタしてうるさいので、振幅・周期ともに控えめにする (#42)
+    shake.value = withRepeat(
+      withSequence(
+        withTiming(-1.5, { duration: 110, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.5, { duration: 110, easing: Easing.inOut(Easing.sin) }),
+      ),
+      Math.floor(SPIN_DURATION / 220),
+      true,
+    );
+  }, [spinning, handleRotation, shake, breathe]);
 
   const machineStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: breathe.value * pressScale.value }],
+    transform: [
+      { translateX: shake.value },
+      { scale: breathe.value * pressScale.value },
+    ],
   }));
 
   const handleStyle = useAnimatedStyle(() => ({

@@ -399,8 +399,8 @@ export default function GachaScreen() {
           )}
           {phase === 'result' && result && (
             <Animated.View
-              // バウンドで跳ねるとうるさいので、行き過ぎのない静かなズームインにする
-              entering={ZoomIn.springify().damping(18).overshootClamping(1)}
+              // 少しだけ弾ませる。damping 12 だと跳ねすぎてうるさい (#42)
+              entering={ZoomIn.springify().damping(15)}
               style={[
                 styles.resultCard,
                 {
