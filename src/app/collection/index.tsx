@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, SlideInLeft, SlideInRight, ZoomIn } from 'react-native-reanimated';
+import { Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  ZoomIn,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompleteCertificate } from '@/components/collection/complete-certificate';
@@ -106,8 +113,6 @@ function SheetCell({ character }: { character: GachaCharacter | null }) {
 
 export default function CollectionScreen() {
   const { language, switchLanguage } = useLanguage();
-  // 最後に切り替えた方向。スライド演出の向きに使う (null = まだ切り替えていない)
-  const [switchDirection, setSwitchDirection] = useState<SwitchDirection | null>(null);
 
   const obtainedCount = useCollectionStore(
     (state) => language.characters.filter((c) => state.entries[c.id]).length,
@@ -137,11 +142,25 @@ export default function CollectionScreen() {
   const [celebration, setCelebration] = useState<number | null>(null);
   const [certificateVisible, setCertificateVisible] = useState(false);
 
+  // 言語切り替え時のシートのスライド演出。entering アニメーションは途中で
+  // キャンセルされると transform が残って表示がずれることがあるため、
+  // 常設ビューへの translateX で行う (必ず 0 に収束する)
+  const { width: screenWidth } = useWindowDimensions();
+  const slideX = useSharedValue(0);
+  const slideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slideX.value }],
+  }));
+
   const handleSwitchLanguage = (direction: SwitchDirection) => {
     haptics.selection();
-    setSwitchDirection(direction);
+    // 新しい言語のシートが切り替え方向の画面外からスライドインしてくる
+    // (イベントハンドラ内での shared value 書き込みは Reanimated の正規のパターン)
+    // eslint-disable-next-line react-hooks/immutability
+    slideX.value = direction * screenWidth;
+    slideX.value = withSpring(0, { damping: 18, overshootClamping: true });
     switchLanguage(direction);
   };
+
 
   // 言語が切り替わったら、進行中の演出は打ち切る (レンダー中の状態調整パターン)
   const [prevLanguageId, setPrevLanguageId] = useState(language.id);
@@ -179,14 +198,6 @@ export default function CollectionScreen() {
   // 行ラベル (あ行/か行…) を持つ言語だけラベル列を出す
   const hasRowLabels = language.sheetRowLabels.some((label) => label != null);
 
-  // 切り替え方向に合わせてシートをスライドイン (初回表示は演出なし)
-  const languageEntering =
-    switchDirection == null
-      ? undefined
-      : switchDirection === 1
-        ? SlideInRight.springify().damping(18)
-        : SlideInLeft.springify().damping(18);
-
   return (
     <ThemedView style={styles.container}>
       <LanguageSwipe onSwipe={handleSwitchLanguage} style={styles.swipeArea}>
@@ -200,10 +211,7 @@ export default function CollectionScreen() {
               <LanguageSwitcher language={language} onSwitch={handleSwitchLanguage} />
             </View>
 
-            <Animated.View
-              key={language.id}
-              entering={languageEntering}
-              style={styles.languageBlock}>
+            <Animated.View style={[styles.languageBlock, slideStyle]}>
               <View style={styles.progressRow}>
                 <ThemedText type="smallBold">
                   {obtainedCount} / {totalCount}

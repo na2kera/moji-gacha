@@ -6,7 +6,6 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -28,15 +27,13 @@ type MachineLanguageId = keyof typeof GachaImages.machine.body;
 
 export function GachaMachine({ spinning, languageId, onPress }: Props) {
   const handleRotation = useSharedValue(0);
-  const shake = useSharedValue(0);
   const breathe = useSharedValue(1);
-  const idleTilt = useSharedValue(0);
   const pressScale = useSharedValue(1);
 
   useEffect(() => {
     if (!spinning) {
-      // 待機中: ゆっくり呼吸するように伸縮し、ときどき小さく身震いして
-      // 「生きている」感を出す (Duolingo のマスコット的な常時アニメ)
+      // 待機中: ゆっくり呼吸するように伸縮して「生きている」感を出す
+      // (Duolingo のマスコット的な常時アニメ)
       breathe.value = withRepeat(
         withSequence(
           withTiming(1.02, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
@@ -44,23 +41,9 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
         ),
         -1,
       );
-      idleTilt.value = withRepeat(
-        withDelay(
-          2600,
-          withSequence(
-            withTiming(-1.4, { duration: 90 }),
-            withTiming(1.4, { duration: 90 }),
-            withTiming(-1.0, { duration: 80 }),
-            withTiming(0, { duration: 80 }),
-          ),
-        ),
-        -1,
-      );
       return () => {
         cancelAnimation(breathe);
-        cancelAnimation(idleTilt);
         breathe.value = 1;
-        idleTilt.value = 0;
       };
     }
 
@@ -69,22 +52,10 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
       duration: SPIN_DURATION,
       easing: Easing.inOut(Easing.cubic),
     });
-    shake.value = withRepeat(
-      withSequence(
-        withTiming(-2.5, { duration: 70 }),
-        withTiming(2.5, { duration: 70 }),
-      ),
-      Math.floor(SPIN_DURATION / 140),
-      true,
-    );
-  }, [spinning, handleRotation, shake, breathe, idleTilt]);
+  }, [spinning, handleRotation, breathe]);
 
   const machineStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: shake.value },
-      { scale: breathe.value * pressScale.value },
-      { rotate: `${idleTilt.value}deg` },
-    ],
+    transform: [{ scale: breathe.value * pressScale.value }],
   }));
 
   const handleStyle = useAnimatedStyle(() => ({

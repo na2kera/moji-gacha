@@ -8,8 +8,6 @@ import Animated, {
   Easing,
   FadeIn,
   runOnJS,
-  SlideInLeft,
-  SlideInRight,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -124,8 +122,6 @@ export default function GachaScreen() {
   const backgroundImage = GachaImages.background[colorScheme === 'dark' ? 'dark' : 'light'];
 
   const { language, switchLanguage } = useLanguage();
-  // 最後に切り替えた方向。スライド演出の向きに使う (null = まだ切り替えていない)
-  const [switchDirection, setSwitchDirection] = useState<SwitchDirection | null>(null);
 
   const recordDraw = useCollectionStore((state) => state.recordDraw);
   const totalDraws = useCollectionStore((state) => state.totalDraws);
@@ -153,16 +149,28 @@ export default function GachaScreen() {
   // 毎日変わるラッキー文字。この文字 (色違い含む) は排出率アップ
   const luckyCharacter = getLuckyCharacter(language.characters, localDateKey());
 
-  const handleSwitchLanguage = (direction: SwitchDirection) => {
-    if (phase !== 'idle') return;
-    haptics.selection();
-    setSwitchDirection(direction);
-    switchLanguage(direction);
-  };
-
   // ガチャマシンを指に追従させ、しきい値を超えたら画面外へ飛ばして言語を切り替えるカルーセル
   const { width: screenWidth } = useWindowDimensions();
   const machineDragX = useSharedValue(0);
+
+  // 言語切り替え時の言語依存ブロックのスライド演出。entering アニメーションは
+  // 途中でキャンセルされると transform が残って表示がずれることがあるため、
+  // 常設ビューへの translateX で行う (必ず 0 に収束する)
+  const languageSlideX = useSharedValue(0);
+  const languageSlideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: languageSlideX.value }],
+  }));
+
+  const handleSwitchLanguage = (direction: SwitchDirection) => {
+    if (phase !== 'idle') return;
+    haptics.selection();
+    // 新しい言語のブロックが切り替え方向の画面外からスライドインしてくる
+    // (イベントハンドラ内での shared value 書き込みは Reanimated の正規のパターン)
+    // eslint-disable-next-line react-hooks/immutability
+    languageSlideX.value = direction * screenWidth;
+    languageSlideX.value = withSpring(0, { damping: 18, overshootClamping: true });
+    switchLanguage(direction);
+  };
   // web ではパン成立後もマシンの Pressable が onPress を発火するため、
   // ドラッグ中〜直後 (1 = ガード中) はタップ扱いを弾く (ネイティブは RNGH がタッチをキャンセルする)
   const machineDragGuard = useSharedValue(0);
@@ -186,7 +194,12 @@ export default function GachaScreen() {
       const shouldSwitch =
         Math.abs(event.translationX) > 60 || Math.abs(event.velocityX) > 800;
       if (!shouldSwitch) {
-        machineDragX.value = withSpring(0, { damping: 16, stiffness: 160 });
+        // overshootClamping で行き過ぎを止め、左右にビヨンビヨン揺れないようにする
+        machineDragX.value = withSpring(0, {
+          damping: 16,
+          stiffness: 160,
+          overshootClamping: true,
+        });
         return;
       }
       const direction: SwitchDirection = event.translationX < 0 ? 1 : -1;
@@ -198,7 +211,11 @@ export default function GachaScreen() {
           if (!finished) return;
           runOnJS(handleSwitchLanguage)(direction);
           machineDragX.value = direction * screenWidth;
-          machineDragX.value = withSpring(0, { damping: 15, stiffness: 120 });
+          machineDragX.value = withSpring(0, {
+            damping: 15,
+            stiffness: 120,
+            overshootClamping: true,
+          });
         },
       );
     });
@@ -266,14 +283,6 @@ export default function GachaScreen() {
 
   const overlayVisible = phase === 'rolling' || phase === 'opening' || phase === 'result';
 
-  // 切り替え方向に合わせて言語依存ブロックをスライドイン (初回表示は演出なし)
-  const languageEntering =
-    switchDirection == null
-      ? undefined
-      : switchDirection === 1
-        ? SlideInRight.springify().damping(18)
-        : SlideInLeft.springify().damping(18);
-
   return (
     <ThemedView style={styles.container}>
       <Image
@@ -311,7 +320,7 @@ export default function GachaScreen() {
             </View>
           )}
         </View>
-        <Animated.View key={language.id} entering={languageEntering} style={styles.languageBlock}>
+        <Animated.View style={[styles.languageBlock, languageSlideStyle]}>
           <View style={[styles.statusRow, styles.luckyStatusRow]}>
             <View style={styles.luckyChip}>
               <Image
@@ -390,7 +399,8 @@ export default function GachaScreen() {
           )}
           {phase === 'result' && result && (
             <Animated.View
-              entering={ZoomIn.springify().damping(12)}
+              // バウンドで跳ねるとうるさいので、行き過ぎのない静かなズームインにする
+              entering={ZoomIn.springify().damping(18).overshootClamping(1)}
               style={[
                 styles.resultCard,
                 {
