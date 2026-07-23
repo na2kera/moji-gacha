@@ -22,7 +22,7 @@ export function buildShareText(character: GachaCharacter): string {
 
 /** コンプリート時のシェア文言を組み立てる */
 export function buildCompleteShareText(setLabel: string, totalCount: number, totalDraws: number): string {
-  return `${setLabel} ${totalCount}文字コンプリート!🏆\n${totalDraws} 回まわしてぜんぶあつめました!\n${HASHTAG}`;
+  return `${setLabel} ${totalCount}文字コンプリート!🏆\n${totalDraws} 回まわして全部集めました!\n${HASHTAG}`;
 }
 
 /** X (Twitter) の投稿画面を開く */

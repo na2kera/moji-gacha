@@ -40,10 +40,10 @@ export function CompleteCertificate({
         <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.certificate}>
           <View style={styles.certificatePaper} />
           <View style={styles.innerFrame}>
-            <ThemedText style={styles.title}>コンプリートしょうじょう</ThemedText>
+            <ThemedText style={styles.title}>コンプリート賞状</ThemedText>
             <Image source={AppImages.splashIcon} style={styles.icon} />
             <ThemedText style={styles.body}>
-              {setLabel} ぜん {totalCount} 文字を{'\n'}すべてあつめたことを証します
+              {setLabel} 全 {totalCount} 文字を{'\n'}全て集めたことを証します
             </ThemedText>
             <ThemedText style={styles.detail}>累計 {totalDraws} 回</ThemedText>
             <ThemedText style={styles.detail}>{dateLabel}</ThemedText>
@@ -75,7 +75,7 @@ export function CompleteCertificate({
           <Pressable
             onPress={onClose}
             style={({ pressed }) => [styles.button, styles.buttonClose, pressed && styles.pressed]}>
-            <ThemedText type="smallBold">とじる</ThemedText>
+            <ThemedText type="smallBold">閉じる</ThemedText>
           </Pressable>
         </View>
       </View>
