@@ -312,10 +312,15 @@ export default function GachaScreen() {
           )}
         </View>
         <Animated.View key={language.id} entering={languageEntering} style={styles.languageBlock}>
-          <View style={styles.statusRow}>
+          <View style={[styles.statusRow, styles.luckyStatusRow]}>
             <View style={styles.luckyChip}>
+              <Image
+                source={GachaImages.effects.luckyClover}
+                style={styles.luckyChipIcon}
+                contentFit="contain"
+              />
               <ThemedText type="smallBold" style={styles.luckyChipText}>
-                ✨ きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
+                きょうのラッキー文字「{luckyCharacter.glyph}」 排出率{LUCKY_WEIGHT_MULTIPLIER}倍!
               </ThemedText>
             </View>
             <Pressable onPress={() => setRatesVisible(true)} hitSlop={8}>
@@ -558,6 +563,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  luckyStatusRow: {
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
   streakChip: {
     backgroundColor: '#FFF1E0',
     borderRadius: Spacing.three,
@@ -570,6 +579,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   luckyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    gap: Spacing.one,
     backgroundColor: '#FFF7D6',
     borderColor: '#F5A80B',
     borderWidth: 1,
@@ -577,7 +590,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.half,
   },
+  luckyChipIcon: {
+    width: 20,
+    height: 20,
+  },
   luckyChipText: {
+    flexShrink: 1,
     color: '#B87E00',
     fontSize: 12,
     lineHeight: 18,

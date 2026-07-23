@@ -234,7 +234,7 @@ export default function CollectionScreen() {
                     pressed && styles.cellPressed,
                   ]}>
                   <ThemedText type="smallBold" style={styles.certificateButtonText}>
-                    🏆 コンプリートしょうじょうをみる
+                    🏆 コンプリート賞状を見る
                   </ThemedText>
                 </Pressable>
               )}
