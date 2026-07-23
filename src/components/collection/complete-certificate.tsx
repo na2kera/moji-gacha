@@ -5,11 +5,9 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Confetti } from '@/components/gacha/confetti';
 import { ThemedText } from '@/components/themed-text';
 import { AppImages } from '@/constants/assets';
-import { RarityColors } from '@/constants/rarity';
 import { Accent, Fonts, Spacing } from '@/constants/theme';
 import { shareCompleteGeneric, shareCompleteToX } from '@/lib/share';
 
-const GOLD = RarityColors.superRare;
 const GOLD_DARK = '#B87E00';
 
 type Props = {
@@ -40,8 +38,8 @@ export function CompleteCertificate({
       <View style={styles.backdrop}>
         <Confetti />
         <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.certificate}>
+          <View style={styles.certificatePaper} />
           <View style={styles.innerFrame}>
-            <ThemedText style={styles.trophy}>🏆</ThemedText>
             <ThemedText style={styles.title}>コンプリートしょうじょう</ThemedText>
             <Image source={AppImages.splashIcon} style={styles.icon} />
             <ThemedText style={styles.body}>
@@ -51,6 +49,12 @@ export function CompleteCertificate({
             <ThemedText style={styles.detail}>{dateLabel}</ThemedText>
             <ThemedText style={styles.appName}>もじガチャ</ThemedText>
           </View>
+          <Image
+            source={AppImages.completeCertificateFrame}
+            style={styles.certificateFrame}
+            contentFit="fill"
+            pointerEvents="none"
+          />
         </Animated.View>
 
         <View style={styles.buttons}>
@@ -91,24 +95,30 @@ const styles = StyleSheet.create({
   certificate: {
     width: 340,
     maxWidth: '100%',
+    aspectRatio: 17 / 22,
+    paddingTop: 70,
+    paddingBottom: 42,
+    paddingHorizontal: 34,
+  },
+  certificatePaper: {
+    position: 'absolute',
+    top: 24,
+    right: 22,
+    bottom: 24,
+    left: 22,
     backgroundColor: '#FFFDF4',
-    borderRadius: Spacing.two,
-    borderWidth: 6,
-    borderColor: GOLD,
-    padding: Spacing.two,
+    borderRadius: Spacing.four,
+  },
+  certificateFrame: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 2,
   },
   innerFrame: {
-    borderWidth: 1.5,
-    borderColor: GOLD_DARK,
-    borderRadius: Spacing.one,
+    flex: 1,
+    zIndex: 1,
     alignItems: 'center',
-    paddingVertical: Spacing.four,
-    paddingHorizontal: Spacing.three,
+    justifyContent: 'center',
     gap: Spacing.two,
-  },
-  trophy: {
-    fontSize: 40,
-    lineHeight: 48,
   },
   title: {
     fontFamily: Fonts.rounded,

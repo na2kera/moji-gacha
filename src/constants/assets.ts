@@ -2,6 +2,7 @@ export const AppImages = {
   launchTitle: require('@/assets/images/brand/moji-gacha-launch-logo-v1.png'),
   splashIcon: require('@/assets/images/splash-icon.png'),
   logoGlow: require('@/assets/images/logo-glow.png'),
+  completeCertificateFrame: require('@/assets/images/collection/complete-certificate-frame.png'),
 } as const;
 
 export const GachaImages = {
@@ -23,6 +24,7 @@ export const GachaImages = {
   },
   effects: {
     superRareAura: require('@/assets/images/gacha/super-rare-aura.png'),
+    luckyClover: require('@/assets/images/gacha/lucky-clover.png'),
   },
 } as const;
 
