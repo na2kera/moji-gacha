@@ -234,6 +234,17 @@ export default function CollectionScreen() {
                 ))}
               </ThemedView>
 
+              <Pressable
+                onPress={() => {
+                  haptics.selection();
+                  router.push('/collection/words');
+                }}
+                style={({ pressed }) => [styles.wordsButton, pressed && styles.cellPressed]}>
+                <ThemedText type="smallBold" style={styles.wordsButtonText}>
+                  ✏️ ことばづくり
+                </ThemedText>
+              </Pressable>
+
               {isComplete && (
                 <Pressable
                   onPress={() => setCertificateVisible(true)}
@@ -383,6 +394,16 @@ const styles = StyleSheet.create({
   },
   milestoneTickReached: {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
+  },
+  wordsButton: {
+    borderRadius: Spacing.three,
+    minHeight: 44,
+    backgroundColor: Accent.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordsButtonText: {
+    color: Accent.onPrimary,
   },
   certificateButton: {
     borderRadius: Spacing.three,
