@@ -6,7 +6,6 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -30,13 +29,15 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
   const handleRotation = useSharedValue(0);
   const shake = useSharedValue(0);
   const breathe = useSharedValue(1);
-  const idleTilt = useSharedValue(0);
   const pressScale = useSharedValue(1);
 
   useEffect(() => {
     if (!spinning) {
-      // 待機中: ゆっくり呼吸するように伸縮し、ときどき小さく身震いして
-      // 「生きている」感を出す (Duolingo のマスコット的な常時アニメ)
+      // 回転中の揺れが残っていたら中央に戻す
+      cancelAnimation(shake);
+      shake.value = withTiming(0, { duration: 120 });
+      // 待機中: ゆっくり呼吸するように伸縮して「生きている」感を出す
+      // (Duolingo のマスコット的な常時アニメ)
       breathe.value = withRepeat(
         withSequence(
           withTiming(1.02, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
@@ -44,23 +45,9 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
         ),
         -1,
       );
-      idleTilt.value = withRepeat(
-        withDelay(
-          2600,
-          withSequence(
-            withTiming(-1.4, { duration: 90 }),
-            withTiming(1.4, { duration: 90 }),
-            withTiming(-1.0, { duration: 80 }),
-            withTiming(0, { duration: 80 }),
-          ),
-        ),
-        -1,
-      );
       return () => {
         cancelAnimation(breathe);
-        cancelAnimation(idleTilt);
         breathe.value = 1;
-        idleTilt.value = 0;
       };
     }
 
@@ -69,21 +56,22 @@ export function GachaMachine({ spinning, languageId, onPress }: Props) {
       duration: SPIN_DURATION,
       easing: Easing.inOut(Easing.cubic),
     });
+    // 回転中は小さく揺れて「動いている」感を出す。高速で大きく振ると
+    // ガタガタしてうるさいので、振幅・周期ともに控えめにする (#42)
     shake.value = withRepeat(
       withSequence(
-        withTiming(-2.5, { duration: 70 }),
-        withTiming(2.5, { duration: 70 }),
+        withTiming(-1.5, { duration: 110, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.5, { duration: 110, easing: Easing.inOut(Easing.sin) }),
       ),
-      Math.floor(SPIN_DURATION / 140),
+      Math.floor(SPIN_DURATION / 220),
       true,
     );
-  }, [spinning, handleRotation, shake, breathe, idleTilt]);
+  }, [spinning, handleRotation, shake, breathe]);
 
   const machineStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: shake.value },
       { scale: breathe.value * pressScale.value },
-      { rotate: `${idleTilt.value}deg` },
     ],
   }));
 

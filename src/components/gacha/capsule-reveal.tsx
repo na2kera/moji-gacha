@@ -23,7 +23,7 @@ import type { GachaCharacter } from '@/data/types';
 
 /** カプセルが転がって登場する演出の長さ (ms) */
 export const ROLL_DURATION = 1100;
-/** 到着後にゆれる演出の長さ (ms) */
+/** カプセル到着から開封が始まるまでの間 (ms) */
 export const WOBBLE_DURATION = 640;
 /** カプセルが開く演出の長さ (ms) */
 export const OPEN_DURATION = 700;
@@ -45,15 +45,13 @@ type Props = {
 
 export function CapsuleReveal({ character, stage }: Props) {
   const rollX = useSharedValue(-ROLL_DISTANCE);
-  const wobble = useSharedValue(0);
   const openProgress = useSharedValue(0);
   const glyphScale = useSharedValue(0);
   const flash = useSharedValue(0);
   const shockwave = useSharedValue(0);
-  const glyphShake = useSharedValue(0);
   const confirmAura = useSharedValue(0);
 
-  // 濁音・半濁音は「音が響く」イメージで揺れと衝撃波を加えた特別演出にする
+  // 濁音・半濁音は「音が響く」イメージで衝撃波を加えた特別演出にする
   const hasSoundMark = character.soundMark != null;
   // 超レアは開封前から金色に発光させる「確定演出」(ソシャゲガチャの定番)
   const isSuperRare = character.rarity === 'superRare';
@@ -80,21 +78,8 @@ export function CapsuleReveal({ character, stage }: Props) {
           ),
         );
       }
-      const wobbleAmp = hasSoundMark ? 13 : 7;
-      wobble.value = withDelay(
-        ROLL_DURATION,
-        withRepeat(
-          withSequence(
-            withTiming(-wobbleAmp, { duration: 80 }),
-            withTiming(wobbleAmp, { duration: 80 }),
-          ),
-          4,
-          true,
-        ),
-      );
     } else {
       confirmAura.value = withTiming(0, { duration: 300 });
-      wobble.value = withTiming(0, { duration: 80 });
       openProgress.value = withTiming(1, {
         duration: OPEN_DURATION,
         easing: Easing.out(Easing.cubic),
@@ -116,20 +101,9 @@ export function CapsuleReveal({ character, stage }: Props) {
           GLYPH_DELAY,
           withTiming(1, { duration: 750, easing: Easing.out(Easing.cubic) }),
         );
-        glyphShake.value = withDelay(
-          GLYPH_DELAY + 240,
-          withRepeat(
-            withSequence(
-              withTiming(-5, { duration: 45 }),
-              withTiming(5, { duration: 45 }),
-            ),
-            4,
-            true,
-          ),
-        );
       }
     }
-  }, [stage, hasSoundMark, isSuperRare, rollX, wobble, openProgress, glyphScale, flash, shockwave, glyphShake, confirmAura]);
+  }, [stage, hasSoundMark, isSuperRare, rollX, openProgress, glyphScale, flash, shockwave, confirmAura]);
 
   const capsuleStyle = useAnimatedStyle(() => {
     // 移動距離に合わせて回転させ、床を転がってくる見た目にする
@@ -137,7 +111,7 @@ export function CapsuleReveal({ character, stage }: Props) {
     return {
       transform: [
         { translateX: rollX.value },
-        { rotate: `${rollRotation + wobble.value}deg` },
+        { rotate: `${rollRotation}deg` },
       ],
     };
   });
@@ -164,7 +138,7 @@ export function CapsuleReveal({ character, stage }: Props) {
   }));
 
   const glyphStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glyphScale.value }, { translateX: glyphShake.value }],
+    transform: [{ scale: glyphScale.value }],
   }));
 
   // 内側→外側の順で時間差をつけて広がる 2 本の衝撃波リング
