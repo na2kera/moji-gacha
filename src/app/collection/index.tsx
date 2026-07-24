@@ -211,6 +211,17 @@ export default function CollectionScreen() {
               <LanguageSwitcher language={language} onSwitch={handleSwitchLanguage} />
             </View>
 
+            <Pressable
+              onPress={() => {
+                haptics.selection();
+                router.push('/collection/words');
+              }}
+              style={({ pressed }) => [styles.wordsButton, pressed && styles.cellPressed]}>
+              <ThemedText type="smallBold" style={styles.wordsButtonText}>
+                ✏️ ことばづくり
+              </ThemedText>
+            </Pressable>
+
             <Animated.View style={[styles.languageBlock, slideStyle]}>
               <View style={styles.progressRow}>
                 <ThemedText type="smallBold">
@@ -233,17 +244,6 @@ export default function CollectionScreen() {
                   />
                 ))}
               </ThemedView>
-
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  router.push('/collection/words');
-                }}
-                style={({ pressed }) => [styles.wordsButton, pressed && styles.cellPressed]}>
-                <ThemedText type="smallBold" style={styles.wordsButtonText}>
-                  ✏️ ことばづくり
-                </ThemedText>
-              </Pressable>
 
               {isComplete && (
                 <Pressable

@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { WordGlyphs } from '@/components/words/word-glyphs';
 import { Accent, BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
-import { characterById, languages } from '@/data/languages';
+import { languages } from '@/data/languages';
 import type { GachaCharacter } from '@/data/types';
 import { haptics } from '@/lib/haptics';
 import { sounds } from '@/lib/sounds';
@@ -20,24 +21,28 @@ function PaletteTile({
   character,
   remaining,
   totalCopies,
+  wordFull,
   onPress,
 }: {
   character: GachaCharacter;
   /** いま使える残り枚数。所持数からことばに使った分を引いた値 */
   remaining: number;
   totalCopies: number;
+  /** ことばが文字数上限に達していて、これ以上追加できない */
+  wordFull: boolean;
   onPress: () => void;
 }) {
   const exhausted = remaining <= 0;
+  const disabled = exhausted || wordFull;
 
   return (
     <Pressable
-      disabled={exhausted}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
       <ThemedView
         type="backgroundElement"
-        style={[styles.tileInner, exhausted && styles.tileExhausted]}>
+        style={[styles.tileInner, disabled && styles.tileExhausted]}>
         <ThemedText
           style={[
             styles.tileGlyph,
@@ -46,7 +51,7 @@ function PaletteTile({
           {character.glyph}
         </ThemedText>
         {totalCopies > 1 && (
-          <View style={[styles.tileBadge, exhausted && styles.tileBadgeExhausted]}>
+          <View style={[styles.tileBadge, disabled && styles.tileBadgeExhausted]}>
             <ThemedText type="smallBold" style={styles.tileBadgeText}>
               ×{remaining}
             </ThemedText>
@@ -75,9 +80,12 @@ export default function CreateWordScreen() {
     counts[id] = (counts[id] ?? 0) + 1;
     return counts;
   }, {});
+  const wordFull = characterIds.length >= MAX_WORD_LENGTH;
 
   const appendCharacter = (character: GachaCharacter) => {
-    if (characterIds.length >= MAX_WORD_LENGTH) return;
+    // タイル側の disabled が守っているが、所持数と文字数の上限はここでも保証する
+    const remaining = (entries[character.id]?.count ?? 0) - (usedCounts[character.id] ?? 0);
+    if (wordFull || remaining <= 0) return;
     haptics.selection();
     setCharacterIds((current) => [...current, character.id]);
   };
@@ -125,32 +133,17 @@ export default function CreateWordScreen() {
                 したの文字をタップしてことばを作ろう!
               </ThemedText>
             ) : (
-              <View style={styles.previewRow}>
-                {characterIds.map((id, index) => {
-                  const character = characterById.get(id);
-                  if (!character) return null;
-                  return (
-                    <Pressable
-                      key={`${id}-${index}`}
-                      onPress={() => removeCharacterAt(index)}
-                      style={({ pressed }) => pressed && styles.pressed}>
-                      <ThemedText
-                        style={[
-                          styles.previewGlyph,
-                          character.colorVariant && {
-                            color: character.colorVariant.glyphColor,
-                          },
-                        ]}>
-                        {character.glyph}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <WordGlyphs
+                characterIds={characterIds}
+                size="large"
+                onPressGlyph={removeCharacterAt}
+              />
             )}
             {characterIds.length > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
-                文字をタップするとけせるよ ({characterIds.length}/{MAX_WORD_LENGTH})
+                {wordFull
+                  ? `ことばは ${MAX_WORD_LENGTH} 文字まで!文字をタップするとけせるよ`
+                  : `文字をタップするとけせるよ (${characterIds.length}/${MAX_WORD_LENGTH})`}
               </ThemedText>
             )}
           </View>
@@ -208,6 +201,7 @@ export default function CreateWordScreen() {
                         character={character}
                         remaining={remaining}
                         totalCopies={totalCopies}
+                        wordFull={wordFull}
                         onPress={() => appendCharacter(character)}
                       />
                     );
@@ -266,19 +260,6 @@ const styles = StyleSheet.create({
     borderColor: '#88888866',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    columnGap: Spacing.one,
-  },
-  previewGlyph: {
-    fontFamily: Fonts.rounded,
-    fontSize: 40,
-    lineHeight: 56,
-    fontWeight: 600,
   },
   controlRow: {
     flexDirection: 'row',
